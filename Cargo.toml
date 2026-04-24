@@ -26,13 +26,13 @@ path = "src/main.rs"
 # Temporarily pulling from the `lucas/kittest-inspect` branch on `lucasmerlin/egui` — that's
 # where `inspector_api` lives until it ships in a released `egui_kittest`. Flip to a plain
 # `version = "..."` dep once that lands.
-egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["inspector_api"] }
+egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["inspector_api"] }
 
 # eframe + egui_extras need to come from the same egui checkout so their `egui` matches the
 # one re-exported by `egui_kittest` above (otherwise we get two `egui::Event` types that
 # don't unify). Drop the `git = ...` once all four crates ship with `inspector_api`.
-eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
-egui_extras = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["image"] }
+eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
+egui_extras = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["image"] }
 fs4 = { version = "0.13.1", default-features = false, features = ["sync"] }
 image = { version = "0.25.6", default-features = false, features = ["gif"] }
 # Cross-platform clipboard — same crate eframe uses — with `set_file_list` so apps that
@@ -43,12 +43,12 @@ arboard = { version = "3.6.1", default-features = false }
 [dev-dependencies]
 # Launch the inspector under egui_kittest for integration tests. `eframe` lets us wrap
 # `InspectorApp` directly; `wgpu` + `snapshot` provide the renderer + `Harness::snapshot`.
-egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["eframe", "wgpu", "snapshot", "inspector"] }
+egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["eframe", "wgpu", "snapshot", "inspector"] }
 # Same source as the `[dependencies]` entries — cargo unifies them, and duplicating the
 # declaration keeps tests able to name `eframe` / `egui` (and `egui::accesskit` for
 # synthesising Frames) directly.
-eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
-egui = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["serde"] }
+eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
+egui = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["serde"] }
 
 
 [profile.release]

@@ -98,15 +98,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "addr2line"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5d307320b3181d6d7954e663bd7c774a838b8220fe0593c86d9fb09f498b4b"
-dependencies = [
- "gimli",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -392,21 +383,6 @@ name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
-
-[[package]]
-name = "backtrace"
-version = "0.3.76"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb531853791a215d7c62a30daf0dde835f381ab5de4589cfe7c649d2cbe92bd6"
-dependencies = [
- "addr2line",
- "cfg-if",
- "libc",
- "miniz_oxide",
- "object",
- "rustc-demangle",
- "windows-link",
-]
 
 [[package]]
 name = "bincode"
@@ -840,7 +816,7 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 [[package]]
 name = "ecolor"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "bytemuck",
  "emath",
@@ -850,7 +826,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -885,7 +861,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "accesskit",
  "ahash",
@@ -903,7 +879,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -922,7 +898,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -943,7 +919,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "ahash",
  "egui",
@@ -956,7 +932,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "bytemuck",
  "egui",
@@ -970,9 +946,8 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
- "backtrace",
  "bincode",
  "dify",
  "eframe",
@@ -997,7 +972,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1064,7 +1039,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1089,7 +1064,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.34.1"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspector-plugin#4b557d295bbaed29c94818880bc497e6e8abcd40"
 
 [[package]]
 name = "equivalent"
@@ -1363,12 +1338,6 @@ dependencies = [
  "color_quant",
  "weezl",
 ]
-
-[[package]]
-name = "gimli"
-version = "0.32.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "gl_generator"
@@ -2383,15 +2352,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "object"
-version = "0.37.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2803,12 +2763,6 @@ name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
-
-[[package]]
-name = "rustc-demangle"
-version = "0.1.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
 
 [[package]]
 name = "rustc-hash"
