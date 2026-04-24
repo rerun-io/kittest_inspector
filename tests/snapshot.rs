@@ -10,7 +10,7 @@ use std::sync::mpsc;
 
 use egui::accesskit::{Node, NodeId, Rect as AkRect, Role, Tree, TreeId, TreeUpdate};
 use egui_kittest::Harness;
-use egui_kittest::inspector_api::{Frame, SourceView};
+use egui_kittest::inspector_api::{Frame, Hook, InspectorCommand, SourceView};
 use kittest_inspector::{InspectorApp, WorkerEvent};
 
 /// Build a representative `Frame` — solid-ish RGBA pixels, a fake AccessKit tree with three
@@ -85,13 +85,15 @@ fn test_inspector() {
             call_site_line: Some(3),
             event_lines: vec![],
         }),
+        hook: Hook::AfterStep,
+        blocking: true,
     }
 }
 
 #[test]
 fn inspector_renders_frame() {
     let (worker_tx, worker_rx) = mpsc::channel::<WorkerEvent>();
-    let (release_tx, release_rx) = mpsc::channel::<Vec<egui::Event>>();
+    let (command_tx, command_rx) = mpsc::channel::<InspectorCommand>();
 
     // Push the frame before constructing the harness so it's ready to consume on the first
     // `pump_worker()` call. `send` into an unbounded mpsc channel can't block.
@@ -101,16 +103,16 @@ fn inspector_renders_frame() {
 
     let mut harness = Harness::builder()
         .with_size(egui::Vec2::new(1100.0, 750.0))
-        .build_eframe(|cc| InspectorApp::new(cc, worker_rx, release_tx));
+        .build_eframe(|cc| InspectorApp::new(cc, worker_rx, command_tx));
 
     // `step` (one frame), not `run` — the app calls `request_repaint_after` unconditionally
     // every frame so it never "settles" in the way `run` expects.
     harness.step();
 
-    // Hold the release rx alive for the test duration — nothing reads from it, but dropping
-    // it early would make future `release_tx.send` calls error (they don't fire here, but
-    // this keeps the channel semantics identical to the production IO thread).
-    let _release_rx = release_rx;
+    // Hold the command rx alive for the test duration — nothing reads from it, but dropping
+    // it early would make future `command_tx.send` calls error (they don't fire here, but
+    // this keeps the channel semantics identical to the production writer thread).
+    let _command_rx = command_rx;
 
     harness.snapshot("inspector_renders_frame");
 }

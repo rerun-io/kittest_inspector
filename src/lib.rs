@@ -9,7 +9,7 @@
 use std::sync::mpsc;
 
 use eframe::egui;
-use egui_kittest::inspector_api::Frame;
+use egui_kittest::inspector_api::{Frame, InspectorCommand};
 
 use egui::accesskit::{self, Node, NodeId, Rect as AkRect};
 
@@ -19,14 +19,21 @@ pub enum WorkerEvent {
     Disconnected,
 }
 
-/// UI → worker message: "you may send `Continue` to the harness now".
-/// Carries any egui events captured in Control mode that the harness should queue.
-pub type ReleaseTx = mpsc::Sender<Vec<egui::Event>>;
-pub type ReleaseRx = mpsc::Receiver<Vec<egui::Event>>;
+/// UI → IO-writer command channel. The writer thread drains this and forwards each command
+/// to the harness over stdout.
+pub type CommandTx = mpsc::Sender<InspectorCommand>;
+pub type CommandRx = mpsc::Receiver<InspectorCommand>;
 
+/// The inspector's view of the harness mode.
+///
+/// The harness itself holds the source of truth (see `crates/egui_kittest/src/inspector.rs`).
+/// We mirror it here so the UI can pick the right button states — tracking what we *asked
+/// for* plus whatever the latest [`Frame::blocking`] says.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlayState {
+    /// We've asked the harness to play, or it's otherwise running freely (Run mode).
     Playing,
+    /// Harness is blocked at a hook (confirmed by the latest frame's `blocking = true`).
     Paused,
 }
 
@@ -34,22 +41,15 @@ enum PlayState {
 #[derive(Debug, Clone, Copy)]
 enum SkipState {
     Inactive,
-    /// Auto-release every incoming frame until `call_site_line` differs from this value.
+    /// Auto-send `Step` for every incoming frame until `call_site_line` differs from this
+    /// value. Stops when the test moves past the current `.run()` / `.step()` call.
     UntilNewCallLine(Option<u32>),
-}
-
-impl SkipState {
-    fn is_active(self) -> bool {
-        matches!(self, Self::UntilNewCallLine(_))
-    }
 }
 
 pub struct InspectorApp {
     worker_rx: mpsc::Receiver<WorkerEvent>,
-    release_tx: ReleaseTx,
+    command_tx: CommandTx,
     play_state: PlayState,
-    /// True when the worker is blocked waiting for a release.
-    worker_waiting: bool,
     /// Every frame the harness has ever sent, in order. Supports back/forward replay.
     history: Vec<Frame>,
     /// Index into `history` of the currently-displayed frame.
@@ -65,12 +65,13 @@ pub struct InspectorApp {
     selected_node: Option<NodeId>,
     /// When on, pointer + keyboard events are forwarded to the harness.
     control_enabled: bool,
-    /// Events accumulated since the last release; drained when we send Continue.
+    /// Events accumulated since the last `Handle` dispatch.
     queued_events: Vec<egui::Event>,
     /// Set when the viewed frame changes; the Source section consumes it to scroll once.
     scroll_pending: bool,
-    /// While `UntilNewCallLine`, auto-release every incoming frame until we see one with a
-    /// different `call_site_line` — i.e. until the test moves past the current runner call.
+    /// While `UntilNewCallLine`, auto-send `Step` for every incoming frame until we see one
+    /// with a different `call_site_line` — i.e. until the test moves past the current
+    /// runner call.
     skip: SkipState,
     /// Screen rect of the rendered image from the previous frame. We hit-test against this
     /// at the start of the next `ui()` (before panels render) so the details tree can see
@@ -107,13 +108,12 @@ impl InspectorApp {
     pub fn new(
         _cc: &eframe::CreationContext<'_>,
         worker_rx: mpsc::Receiver<WorkerEvent>,
-        release_tx: ReleaseTx,
+        command_tx: CommandTx,
     ) -> Self {
         Self {
             worker_rx,
-            release_tx,
+            command_tx,
             play_state: PlayState::Paused,
-            worker_waiting: false,
             history: Vec::new(),
             view_index: 0,
             textured_step: None,
@@ -129,6 +129,19 @@ impl InspectorApp {
             last_image_scale: 1.0,
             status_message: None,
         }
+    }
+
+    /// `true` if the most recent frame told us the harness is blocked at a hook. Used to
+    /// enable the Step button and switch the status label — the source of truth for "is the
+    /// harness waiting?".
+    fn harness_blocked(&self) -> bool {
+        self.history.last().is_some_and(|f| f.blocking)
+    }
+
+    /// Send a command to the harness; drops it on a broken channel (we can't do anything
+    /// useful — the writer thread has exited).
+    fn send_command(&self, cmd: InspectorCommand) {
+        let _ = self.command_tx.send(cmd);
     }
 
     /// Hit-test the current cursor position against the cached image rect + the viewed
@@ -172,21 +185,21 @@ impl InspectorApp {
                 WorkerEvent::Frame(frame) => {
                     let new_call_line = frame.source.as_ref().and_then(|s| s.call_site_line);
                     let was_live = self.is_live_view() || self.history.is_empty();
+                    let blocking = frame.blocking;
                     self.history.push(*frame);
                     if was_live {
                         self.view_index = self.history.len() - 1;
                     }
-                    self.worker_waiting = true;
 
-                    // If we're fast-forwarding to the next `run()` call, stop once the
-                    // call_site line differs from the one we started from.
+                    // If we're fast-forwarding to the next `.run()` / `.step()` call and the
+                    // harness is blocked at a matching line, send another Step and move on
+                    // quietly. Otherwise cancel the skip and show the frame normally.
                     let still_skipping = matches!(
                         self.skip,
                         SkipState::UntilNewCallLine(from) if new_call_line == from
-                    );
+                    ) && blocking;
                     if still_skipping {
-                        // Don't auto-scroll / flash for in-between frames we're about to blow
-                        // past; the user will see the first settled frame at the new call.
+                        self.send_command(InspectorCommand::Step);
                     } else {
                         self.skip = SkipState::Inactive;
                         // Only scroll the source panel for the frame the user will actually
@@ -195,10 +208,14 @@ impl InspectorApp {
                             self.scroll_pending = true;
                         }
                     }
+
+                    // Reconcile `play_state` with what the harness just reported.
+                    if blocking {
+                        self.play_state = PlayState::Paused;
+                    }
                 }
                 WorkerEvent::Disconnected => {
                     self.connected = false;
-                    self.worker_waiting = false;
                     self.skip = SkipState::Inactive;
                 }
             }
@@ -221,14 +238,14 @@ impl InspectorApp {
         self.current_texture = Some(texture);
     }
 
-    fn send_release(&mut self) {
-        if !self.worker_waiting {
+    /// Ship accumulated Control-mode events to the harness as a single `Handle` command, if
+    /// any are queued. Does not change the harness's Play / Pause / Run mode.
+    fn flush_events(&mut self) {
+        if self.queued_events.is_empty() || !self.connected {
             return;
         }
         let events = std::mem::take(&mut self.queued_events);
-        if self.release_tx.send(events).is_ok() {
-            self.worker_waiting = false;
-        }
+        self.send_command(InspectorCommand::Handle { events });
     }
 }
 
@@ -247,21 +264,10 @@ impl eframe::App for InspectorApp {
         details_panel(self, ui);
         central_panel(self, ui);
 
-        // End-of-frame auto-release policy:
-        // - Fast-forwarding to the next `run()` call: always release.
-        // - Control mode: stay blocked, but advance one step whenever the user generates events
-        //   (each click / keypress = one harness step).
-        // - Otherwise, Playing mode runs freely; Paused mode waits for Next/Play/Step.
-        let auto_release = if self.skip.is_active() {
-            true
-        } else if self.control_enabled {
-            !self.queued_events.is_empty()
-        } else {
-            self.play_state == PlayState::Playing
-        };
-        if self.worker_waiting && auto_release {
-            self.send_release();
-        }
+        // Forward any Control-mode events collected this frame to the harness as a single
+        // `Handle` command. The harness applies them via `step_no_side_effects`, so the next
+        // frame arriving via the worker channel will reflect their effect.
+        self.flush_events();
 
         ctx.request_repaint_after(std::time::Duration::from_millis(50));
     }
@@ -271,30 +277,45 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
     egui::Panel::top("controls").show_inside(ui, |ui| {
         ui.horizontal(|ui| {
             let playing = app.play_state == PlayState::Playing;
+            let blocked = app.harness_blocked();
             let play_response = ui
-                .add_enabled_ui(!app.control_enabled, |ui| {
+                .add_enabled_ui(app.connected && !app.control_enabled, |ui| {
                     ui.selectable_label(playing, "▶ Play")
                 })
                 .inner
                 .on_disabled_hover_text("Disabled while Control mode is on");
             if play_response.clicked() {
                 app.play_state = PlayState::Playing;
-                app.send_release();
+                app.send_command(InspectorCommand::Play);
             }
+            let pause_response = ui
+                .add_enabled_ui(app.connected, |ui| {
+                    ui.selectable_label(!playing, "⏸ Pause")
+                })
+                .inner
+                .on_hover_text("Block the harness at its next hook");
+            if pause_response.clicked() {
+                app.play_state = PlayState::Paused;
+                app.send_command(InspectorCommand::Pause);
+            }
+            let can_step = blocked && app.connected;
             if ui
-                .selectable_label(!playing, "⏸ Pause")
-                .on_hover_text("Pause harness after the next frame")
+                .add_enabled(can_step, egui::Button::new("⏩ Step"))
+                .on_hover_text("Advance one frame (runs until the next after_step hook)")
                 .clicked()
             {
                 app.play_state = PlayState::Paused;
+                app.send_command(InspectorCommand::Step);
             }
-            let can_step = app.play_state == PlayState::Paused && app.worker_waiting;
             if ui
-                .add_enabled(can_step, egui::Button::new("⏩ Step"))
-                .on_hover_text("Advance one harness internal step")
+                .add_enabled(app.connected && blocked, egui::Button::new("🏃 Run"))
+                .on_hover_text(
+                    "Let the harness run until the next `after_run` hook fires",
+                )
                 .clicked()
             {
-                app.send_release();
+                app.play_state = PlayState::Playing;
+                app.send_command(InspectorCommand::Run);
             }
             if ui
                 .add_enabled(can_step, egui::Button::new("⏭ Next"))
@@ -311,7 +332,7 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
                     .and_then(|f| f.source.as_ref())
                     .and_then(|s| s.call_site_line);
                 app.skip = SkipState::UntilNewCallLine(current_line);
-                app.send_release();
+                app.send_command(InspectorCommand::Step);
             }
 
             ui.separator();
@@ -401,14 +422,12 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
             }
 
             ui.separator();
-            ui.label(if app.connected {
-                if app.worker_waiting {
-                    "harness blocked"
-                } else {
-                    "harness running"
-                }
-            } else {
+            ui.label(if !app.connected {
                 "harness disconnected"
+            } else if app.harness_blocked() {
+                "harness blocked"
+            } else {
+                "harness running"
             });
         });
     });

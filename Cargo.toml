@@ -51,6 +51,15 @@ eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspec
 egui = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["serde"] }
 
 
+# Local-development override: while iterating on the protocol alongside egui_kittest, pull
+# the four crates from a local checkout instead of the branch on github. Remove once the
+# protocol changes have landed in a release of egui_kittest.
+[patch."https://github.com/emilk/egui"]
+egui_kittest = { path = "/Users/lucas/code/egui/crates/egui_kittest" }
+eframe = { path = "/Users/lucas/code/egui/crates/eframe" }
+egui_extras = { path = "/Users/lucas/code/egui/crates/egui_extras" }
+egui = { path = "/Users/lucas/code/egui/crates/egui" }
+
 [profile.release]
 opt-level = 2
 
