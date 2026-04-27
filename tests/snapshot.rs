@@ -10,8 +10,8 @@ use std::sync::mpsc;
 
 use egui::accesskit::{Node, NodeId, Rect as AkRect, Role, Tree, TreeId, TreeUpdate};
 use egui_kittest::Harness;
-use egui_kittest::inspector_api::{Frame, Hook, InspectorCommand, SourceView};
-use kittest_inspector::{InspectorApp, WorkerEvent};
+use egui_kittest::inspector_api::{Frame, HarnessMessage, InspectorCommand, SourceView};
+use kittest_inspector::InspectorApp;
 
 /// Build a representative `Frame` — solid-ish RGBA pixels, a fake AccessKit tree with three
 /// nodes, and a short `SourceView` so the source/frame/accesskit panels all have something
@@ -84,21 +84,20 @@ fn test_inspector() {
             contents: Some(source_contents.to_owned()),
             call_site_line: Some(3),
             event_lines: vec![],
+            panic_line: None,
         }),
-        hook: Hook::AfterStep,
-        blocking: true,
     }
 }
 
 #[test]
 fn inspector_renders_frame() {
-    let (worker_tx, worker_rx) = mpsc::channel::<WorkerEvent>();
+    let (worker_tx, worker_rx) = mpsc::channel::<HarnessMessage>();
     let (command_tx, command_rx) = mpsc::channel::<InspectorCommand>();
 
     // Push the frame before constructing the harness so it's ready to consume on the first
     // `pump_worker()` call. `send` into an unbounded mpsc channel can't block.
     worker_tx
-        .send(WorkerEvent::Frame(Box::new(make_synthetic_frame())))
+        .send(HarnessMessage::Frame(Box::new(make_synthetic_frame())))
         .expect("worker channel should accept the frame");
 
     let mut harness = Harness::builder()

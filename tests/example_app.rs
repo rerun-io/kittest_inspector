@@ -9,10 +9,6 @@
 //! Run with the inspector attached to debug the inspector UI against a real harness:
 //!
 //! ```sh
-//! cargo build
-//! KITTEST_INSPECTOR=1 \
-//!   KITTEST_INSPECTOR_PATH=target/debug/kittest_inspector \
-//!   cargo test --test example_app -- --nocapture
 //! cargo build && KITTEST_INSPECTOR=1 KITTEST_INSPECTOR_PATH=target/debug/kittest_inspector cargo test --test example_app
 //! ```
 //!

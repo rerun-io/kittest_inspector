@@ -14,7 +14,7 @@ use std::thread;
 
 use eframe::egui;
 use egui_kittest::inspector_api::{HarnessMessage, InspectorCommand, read_message, write_message};
-use kittest_inspector::{CommandRx, InspectorApp, WorkerEvent, log_diag};
+use kittest_inspector::{CommandRx, InspectorApp, log_diag};
 
 fn main() -> eframe::Result<()> {
     // Install a panic hook that writes to our own log file (not the inherited — and
@@ -31,7 +31,7 @@ fn main() -> eframe::Result<()> {
     // flock when the file descriptor is dropped on exit.
     let _lock = acquire_single_instance_lock();
 
-    let (worker_tx, worker_rx) = mpsc::channel::<WorkerEvent>();
+    let (worker_tx, worker_rx) = mpsc::channel::<HarnessMessage>();
     let (command_tx, command_rx) = mpsc::channel::<InspectorCommand>();
 
     thread::Builder::new()
@@ -58,27 +58,23 @@ fn main() -> eframe::Result<()> {
     )
 }
 
-/// Read frames from stdin and forward to the UI until the harness disconnects.
-fn run_reader(ui_tx: &mpsc::Sender<WorkerEvent>) {
+/// Read harness messages from stdin and forward to the UI until the harness disconnects
+/// (EOF). Returning drops the sender, which the UI sees as `TryRecvError::Disconnected`.
+fn run_reader(ui_tx: &mpsc::Sender<HarnessMessage>) {
     let stdin = io::stdin();
     let mut reader = BufReader::new(stdin.lock());
 
     loop {
         match read_message::<_, HarnessMessage>(&mut reader) {
-            Ok(HarnessMessage::Frame(frame)) => {
-                if ui_tx.send(WorkerEvent::Frame(frame)).is_err() {
+            Ok(msg) => {
+                if ui_tx.send(msg).is_err() {
                     return;
                 }
-            }
-            Ok(HarnessMessage::Goodbye) => {
-                let _ = ui_tx.send(WorkerEvent::Disconnected);
-                return;
             }
             Err(err) => {
                 if err.kind() != io::ErrorKind::UnexpectedEof {
                     log_diag(&format!("read failed: {err}"));
                 }
-                let _ = ui_tx.send(WorkerEvent::Disconnected);
                 return;
             }
         }

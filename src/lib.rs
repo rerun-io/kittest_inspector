@@ -9,14 +9,19 @@
 use std::sync::mpsc;
 
 use eframe::egui;
-use egui_kittest::inspector_api::{Frame, InspectorCommand};
+use egui_kittest::inspector_api::{Frame, HarnessMessage, InspectorCommand, SourceView};
 
 use egui::accesskit::{self, Node, NodeId, Rect as AkRect};
 
-/// Internal worker → UI message.
-pub enum WorkerEvent {
-    Frame(Box<Frame>),
-    Disconnected,
+/// Final test outcome, cached on the [`InspectorApp`] so the status bar can render it and
+/// the source panel can highlight the panic line.
+#[derive(Debug, Clone)]
+struct TestOutcome {
+    ok: bool,
+    message: Option<String>,
+    /// Source view from `HarnessMessage::Finished` — overrides the latest frame's source so
+    /// the panic line highlight (red) is visible even though no extra frame was sent at end.
+    source: Option<SourceView>,
 }
 
 /// UI → IO-writer command channel. The writer thread drains this and forwards each command
@@ -37,19 +42,19 @@ enum PlayState {
     Paused,
 }
 
-/// Fast-forward state for the ⏭ Next button.
-#[derive(Debug, Clone, Copy)]
-enum SkipState {
-    Inactive,
-    /// Auto-send `Step` for every incoming frame until `call_site_line` differs from this
-    /// value. Stops when the test moves past the current `.run()` / `.step()` call.
-    UntilNewCallLine(Option<u32>),
-}
-
 pub struct InspectorApp {
-    worker_rx: mpsc::Receiver<WorkerEvent>,
+    worker_rx: mpsc::Receiver<HarnessMessage>,
     command_tx: CommandTx,
     play_state: PlayState,
+    /// Mirrors the harness's blocking state — updated from [`HarnessMessage::Blocked`]. Starts
+    /// `true` because the harness sends its first `Blocked(true)` at the first `after_step`
+    /// of its construction-time `run_ok`, but if anything races the UI, defaulting to
+    /// "blocked" keeps the controls in a sensible initial position.
+    harness_blocked: bool,
+    /// Set by [`HarnessMessage::Finished`]. The harness is parked waiting for dismiss; the
+    /// status bar shows pass/fail and the source panel switches to the outcome's source view
+    /// (which carries `SourceView::panic_line` for failures).
+    test_outcome: Option<TestOutcome>,
     /// Every frame the harness has ever sent, in order. Supports back/forward replay.
     history: Vec<Frame>,
     /// Index into `history` of the currently-displayed frame.
@@ -69,10 +74,6 @@ pub struct InspectorApp {
     queued_events: Vec<egui::Event>,
     /// Set when the viewed frame changes; the Source section consumes it to scroll once.
     scroll_pending: bool,
-    /// While `UntilNewCallLine`, auto-send `Step` for every incoming frame until we see one
-    /// with a different `call_site_line` — i.e. until the test moves past the current
-    /// runner call.
-    skip: SkipState,
     /// Screen rect of the rendered image from the previous frame. We hit-test against this
     /// at the start of the next `ui()` (before panels render) so the details tree can see
     /// `hovered_node` in the same frame as the image highlight.
@@ -107,13 +108,15 @@ impl InspectorApp {
 impl InspectorApp {
     pub fn new(
         _cc: &eframe::CreationContext<'_>,
-        worker_rx: mpsc::Receiver<WorkerEvent>,
+        worker_rx: mpsc::Receiver<HarnessMessage>,
         command_tx: CommandTx,
     ) -> Self {
         Self {
             worker_rx,
             command_tx,
             play_state: PlayState::Paused,
+            harness_blocked: true,
+            test_outcome: None,
             history: Vec::new(),
             view_index: 0,
             textured_step: None,
@@ -124,18 +127,16 @@ impl InspectorApp {
             control_enabled: false,
             queued_events: Vec::new(),
             scroll_pending: false,
-            skip: SkipState::Inactive,
             last_image_rect: None,
             last_image_scale: 1.0,
             status_message: None,
         }
     }
 
-    /// `true` if the most recent frame told us the harness is blocked at a hook. Used to
-    /// enable the Step button and switch the status label — the source of truth for "is the
-    /// harness waiting?".
+    /// `true` if the most recent [`HarnessMessage::Blocked`] said the harness is blocked at a
+    /// hook. Used to enable the Step/Run buttons and switch the status label.
     fn harness_blocked(&self) -> bool {
-        self.history.last().is_some_and(|f| f.blocking)
+        self.harness_blocked
     }
 
     /// Send a command to the harness; drops it on a broken channel (we can't do anything
@@ -180,43 +181,43 @@ impl InspectorApp {
     }
 
     fn pump_worker(&mut self) {
-        while let Ok(event) = self.worker_rx.try_recv() {
-            match event {
-                WorkerEvent::Frame(frame) => {
-                    let new_call_line = frame.source.as_ref().and_then(|s| s.call_site_line);
+        loop {
+            match self.worker_rx.try_recv() {
+                Ok(HarnessMessage::Frame(frame)) => {
                     let was_live = self.is_live_view() || self.history.is_empty();
-                    let blocking = frame.blocking;
                     self.history.push(*frame);
                     if was_live {
                         self.view_index = self.history.len() - 1;
+                        self.scroll_pending = true;
                     }
-
-                    // If we're fast-forwarding to the next `.run()` / `.step()` call and the
-                    // harness is blocked at a matching line, send another Step and move on
-                    // quietly. Otherwise cancel the skip and show the frame normally.
-                    let still_skipping = matches!(
-                        self.skip,
-                        SkipState::UntilNewCallLine(from) if new_call_line == from
-                    ) && blocking;
-                    if still_skipping {
-                        self.send_command(InspectorCommand::Step);
-                    } else {
-                        self.skip = SkipState::Inactive;
-                        // Only scroll the source panel for the frame the user will actually
-                        // see (i.e. when we're following the live edge).
-                        if was_live {
-                            self.scroll_pending = true;
-                        }
-                    }
-
+                }
+                Ok(HarnessMessage::Blocked(blocking)) => {
+                    self.harness_blocked = blocking;
                     // Reconcile `play_state` with what the harness just reported.
                     if blocking {
                         self.play_state = PlayState::Paused;
                     }
                 }
-                WorkerEvent::Disconnected => {
+                Ok(HarnessMessage::Finished {
+                    ok,
+                    message,
+                    source,
+                }) => {
+                    self.test_outcome = Some(TestOutcome {
+                        ok,
+                        message,
+                        source,
+                    });
+                    self.play_state = PlayState::Paused;
+                    // `Finished` implies the harness is blocked waiting for dismiss.
+                    self.harness_blocked = true;
+                    // Make the source panel re-scroll to the panic line on its next paint.
+                    self.scroll_pending = true;
+                }
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
                     self.connected = false;
-                    self.skip = SkipState::Inactive;
+                    break;
                 }
             }
         }
@@ -298,9 +299,9 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
                 app.play_state = PlayState::Paused;
                 app.send_command(InspectorCommand::Pause);
             }
-            let can_step = blocked && app.connected;
+            let can_drive = app.connected && blocked;
             if ui
-                .add_enabled(can_step, egui::Button::new("⏩ Step"))
+                .add_enabled(can_drive, egui::Button::new("⏩ Step"))
                 .on_hover_text("Advance one frame (runs until the next after_step hook)")
                 .clicked()
             {
@@ -308,31 +309,12 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
                 app.send_command(InspectorCommand::Step);
             }
             if ui
-                .add_enabled(app.connected && blocked, egui::Button::new("🏃 Run"))
-                .on_hover_text(
-                    "Let the harness run until the next `after_run` hook fires",
-                )
+                .add_enabled(can_drive, egui::Button::new("🏃 Run"))
+                .on_hover_text("Let the harness run until the next `after_run` hook fires")
                 .clicked()
             {
                 app.play_state = PlayState::Playing;
                 app.send_command(InspectorCommand::Run);
-            }
-            if ui
-                .add_enabled(can_step, egui::Button::new("⏭ Next"))
-                .on_hover_text(
-                    "Fast-forward until the test reaches the next `run()` / `step()` call",
-                )
-                .clicked()
-            {
-                // "From" is the *live* frame's call_site — the harness is blocked there, not
-                // at wherever the user is currently browsing in history.
-                let current_line = app
-                    .history
-                    .last()
-                    .and_then(|f| f.source.as_ref())
-                    .and_then(|s| s.call_site_line);
-                app.skip = SkipState::UntilNewCallLine(current_line);
-                app.send_command(InspectorCommand::Step);
             }
 
             ui.separator();
@@ -422,13 +404,25 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
             }
 
             ui.separator();
-            ui.label(if !app.connected {
-                "harness disconnected"
-            } else if app.harness_blocked() {
-                "harness blocked"
+            if let Some(outcome) = &app.test_outcome {
+                if outcome.ok {
+                    ui.colored_label(egui::Color32::from_rgb(80, 200, 120), "✅ test passed");
+                } else {
+                    let msg = outcome.message.as_deref().unwrap_or("(no message)");
+                    ui.colored_label(
+                        egui::Color32::from_rgb(240, 110, 110),
+                        format!("❌ test failed: {msg}"),
+                    );
+                }
             } else {
-                "harness running"
-            });
+                ui.label(if !app.connected {
+                    "harness disconnected"
+                } else if app.harness_blocked() {
+                    "harness blocked"
+                } else {
+                    "harness running"
+                });
+            }
         });
     });
 }
@@ -445,13 +439,25 @@ fn details_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
 
             // The Source view sits in its own resizable top panel so the user can drop it out
             // of the way when they want more room for the widget / AccessKit sections below.
+            // Once the test has finished, the outcome's `SourceView` (with `panic_line`)
+            // takes priority over the latest frame's so failures jump to the panic site.
+            let source = app
+                .test_outcome
+                .as_ref()
+                .and_then(|o| o.source.as_ref())
+                .or(frame.source.as_ref());
             egui::Panel::top("details_source")
                 .resizable(true)
                 .default_size(280.0)
                 .show_inside(ui, |ui| {
                     ui.heading("Source");
                     let scroll_pending = std::mem::take(&mut app.scroll_pending);
-                    source_section(ui, &frame, scroll_pending);
+                    match source {
+                        Some(source) => source_section(ui, source, scroll_pending),
+                        None => {
+                            ui.weak("No source location for this frame.");
+                        }
+                    }
                 });
 
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -694,12 +700,7 @@ fn kv_grid(ui: &mut egui::Ui, id: &str, body: impl FnOnce(&mut egui::Ui)) {
 /// Render the "Source" section: the test file (topmost common ancestor across the call and
 /// its events), with the relevant lines highlighted and (once per new frame) the view
 /// scrolled to them.
-fn source_section(ui: &mut egui::Ui, frame: &Frame, scroll_pending: bool) {
-    let Some(source) = &frame.source else {
-        ui.weak("No source location for this frame.");
-        return;
-    };
-
+fn source_section(ui: &mut egui::Ui, source: &SourceView, scroll_pending: bool) {
     ui.horizontal(|ui| {
         ui.monospace(shorten_path(&source.path));
         if let Some(line) = source.call_site_line {
@@ -713,13 +714,18 @@ fn source_section(ui: &mut egui::Ui, frame: &Frame, scroll_pending: bool) {
     };
 
     let call_site_line = source.call_site_line;
+    let panic_line = source.panic_line;
     let event_lines: std::collections::HashSet<u32> = source.event_lines.iter().copied().collect();
-    let focus_line = call_site_line.or_else(|| source.event_lines.first().copied());
+    // Panic takes precedence for scroll focus so failed tests jump straight to the panic line.
+    let focus_line = panic_line
+        .or(call_site_line)
+        .or_else(|| source.event_lines.first().copied());
 
     // Semi-transparent tints so the highlight works in both light and dark themes without
     // darkening the text. Alpha ~72/255 keeps the underlying text fully legible.
     let call_bg = egui::Color32::from_rgba_unmultiplied(80, 160, 255, 72);
     let event_bg = egui::Color32::from_rgba_unmultiplied(255, 180, 60, 72);
+    let panic_bg = egui::Color32::from_rgba_unmultiplied(240, 80, 80, 96);
 
     let row_height = ui.text_style_height(&egui::TextStyle::Monospace);
     let lines: Vec<&str> = contents.lines().collect();
@@ -757,9 +763,12 @@ fn source_section(ui: &mut egui::Ui, frame: &Frame, scroll_pending: bool) {
                 egui::pos2(content_left, content_top + y),
                 egui::vec2(row_width, row_height),
             );
+            let is_panic = Some(line_no) == panic_line;
             let is_call = Some(line_no) == call_site_line;
             let is_event = event_lines.contains(&line_no);
-            let bg = if is_call {
+            let bg = if is_panic {
+                Some(panic_bg)
+            } else if is_call {
                 Some(call_bg)
             } else if is_event {
                 Some(event_bg)
