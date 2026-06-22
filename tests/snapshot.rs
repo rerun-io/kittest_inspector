@@ -9,8 +9,8 @@
 use std::sync::mpsc;
 
 use egui::accesskit::{Node, NodeId, Rect as AkRect, Role, Tree, TreeId, TreeUpdate};
+use egui_inspection::{Frame, FrameScreenshot, HarnessMessage, InspectorCommand, SourceView};
 use egui_kittest::Harness;
-use egui_kittest::inspector_api::{Frame, HarnessMessage, InspectorCommand, SourceView};
 use kittest_inspector::InspectorApp;
 
 /// Build a representative `Frame` — solid-ish RGBA pixels, a fake AccessKit tree with three
@@ -73,12 +73,13 @@ fn test_inspector() {
 
     Frame {
         step: 0,
-        width,
-        height,
         pixels_per_point: 1.0,
-        rgba,
+        screenshot: Some(FrameScreenshot {
+            width,
+            height,
+            rgba,
+        }),
         accesskit: Some(accesskit),
-        label: Some("synthetic_snapshot".to_owned()),
         source: Some(SourceView {
             path: "tests/snapshot.rs".to_owned(),
             contents: Some(source_contents.to_owned()),

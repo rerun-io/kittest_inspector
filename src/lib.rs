@@ -1,7 +1,10 @@
-//! Eframe app that displays frames + accesskit trees streamed from an `egui_kittest` harness,
-//! and lets the user pause / resume / single-step the test and inspect individual widgets.
+//! Eframe app that displays frames + accesskit trees streamed from an `egui_kittest` harness
+//! or a live `eframe` app running [`egui_inspection::InspectionPlugin`], and lets the user
+//! pause / resume / single-step the test and inspect individual widgets.
 //!
-//! The binary in `src/main.rs` is the default entry point: it wires up stdin/stdout I/O, a
+//! The binary in `src/main.rs` is the default entry point: it picks the transport
+//! (stdin/stdout for harnesses launched by `egui_kittest::InspectorPlugin`, or a unix
+//! socket for live apps reading [`egui_inspection::INSPECTION_SOCKET_ENV_VAR`]), wires up a
 //! single-instance lock, and runs the eframe app. This crate also exposes [`InspectorApp`]
 //! and the worker-channel types as a library so integration tests can launch the same app
 //! under `egui_kittest` and feed synthetic frames through the channels.
@@ -9,7 +12,7 @@
 use std::sync::mpsc;
 
 use eframe::egui;
-use egui_kittest::inspector_api::{Frame, HarnessMessage, InspectorCommand, SourceView};
+use egui_inspection::{Frame, HarnessMessage, InspectorCommand, SourceView};
 
 use egui::accesskit::{self, Node, NodeId, Rect as AkRect};
 
@@ -31,7 +34,8 @@ pub type CommandRx = mpsc::Receiver<InspectorCommand>;
 
 /// The inspector's view of the harness mode.
 ///
-/// The harness itself holds the source of truth (see `crates/egui_kittest/src/inspector.rs`).
+/// The harness/app itself holds the source of truth (see `crates/egui_kittest/src/inspector.rs`
+/// and `crates/egui_inspection/src/plugin.rs`).
 /// We mirror it here so the UI can pick the right button states — tracking what we *asked
 /// for* plus whatever the latest [`Frame::blocking`] says.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +86,17 @@ pub struct InspectorApp {
     last_image_scale: f32,
     /// Transient status line (e.g. "Copied to /tmp/...") shown next to the Copy-GIF button.
     status_message: Option<String>,
+    /// Pending resize target in logical points. Initialized from the first frame so the
+    /// initial value matches the peer's current size; thereafter the user owns the values
+    /// (we don't track upstream changes — they'd thrash the inputs while the user is typing).
+    resize_target: Option<(u32, u32)>,
+    /// Set after we send an `InspectorCommand::Screenshot` to a peer that streams
+    /// accesskit-only frames (live apps). Cleared as soon as a frame with pixels arrives.
+    /// Prevents us from spamming screenshot requests every accesskit update.
+    awaiting_screenshot: bool,
+    /// Peer-supplied label from the `Hello` handshake (e.g. test name, app name). Shown in
+    /// the Frame KV grid.
+    peer_label: Option<String>,
 }
 
 impl InspectorApp {
@@ -130,6 +145,9 @@ impl InspectorApp {
             last_image_rect: None,
             last_image_scale: 1.0,
             status_message: None,
+            resize_target: None,
+            awaiting_screenshot: false,
+            peer_label: None,
         }
     }
 
@@ -183,8 +201,37 @@ impl InspectorApp {
     fn pump_worker(&mut self) {
         loop {
             match self.worker_rx.try_recv() {
+                Ok(HarnessMessage::Hello(hello)) => {
+                    self.peer_label = hello.label;
+                    // We always want every frame to carry a screenshot. If the peer isn't
+                    // already streaming, ask for it. Kittest peers default `true`; live
+                    // (eframe) peers default `false`.
+                    if !hello.continuous_screenshots
+                        && hello.capabilities.continuous_screenshots
+                    {
+                        let _ = self
+                            .command_tx
+                            .send(InspectorCommand::SetContinuousScreenshots(true));
+                    }
+                }
                 Ok(HarnessMessage::Frame(frame)) => {
                     let was_live = self.is_live_view() || self.history.is_empty();
+                    let has_image = frame.screenshot.is_some();
+                    // Seed the resize input from the first frame *with an image* so the
+                    // displayed values match the peer's current size. Don't overwrite later
+                    // — the user owns those inputs once we have them.
+                    if self.resize_target.is_none()
+                        && let Some(shot) = frame.screenshot.as_ref()
+                        && frame.pixels_per_point > 0.0
+                    {
+                        let w = (shot.width as f32 / frame.pixels_per_point).round() as u32;
+                        let h = (shot.height as f32 / frame.pixels_per_point).round() as u32;
+                        self.resize_target = Some((w.max(1), h.max(1)));
+                    }
+                    if has_image {
+                        // Imaged frame back — the in-flight screenshot request is satisfied.
+                        self.awaiting_screenshot = false;
+                    }
                     self.history.push(*frame);
                     if was_live {
                         self.view_index = self.history.len() - 1;
@@ -225,6 +272,11 @@ impl InspectorApp {
 
     /// (Re-)upload `view_frame()`'s pixels to `current_texture` if the texture is missing or
     /// represents a different step than what we're viewing.
+    ///
+    /// Skips frames without an image attached (width == 0 / height == 0). Live apps under
+    /// [`egui_inspection::InspectionPlugin`] only emit pixels in response to an explicit
+    /// `Screenshot` command — every other frame is accesskit-only. Keeping the previous
+    /// texture gives the user something to inspect while they wait for the next screenshot.
     fn ensure_texture_uploaded(&mut self, ctx: &egui::Context) {
         let Some(frame) = self.view_frame() else {
             return;
@@ -232,8 +284,21 @@ impl InspectorApp {
         if self.textured_step == Some(frame.step) {
             return;
         }
-        let size = [frame.width as usize, frame.height as usize];
-        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &frame.rgba);
+        let Some(shot) = frame.screenshot.as_ref() else {
+            return;
+        };
+        if shot.width == 0 || shot.height == 0 || shot.png.is_empty() {
+            return;
+        }
+        let rgba = match image::load_from_memory(&shot.png) {
+            Ok(img) => img.to_rgba8(),
+            Err(err) => {
+                log_diag(&format!("decode screenshot PNG failed: {err}"));
+                return;
+            }
+        };
+        let size = [rgba.width() as usize, rgba.height() as usize];
+        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
         let texture = ctx.load_texture("kittest_inspector_frame", color_image, Default::default());
         self.textured_step = Some(frame.step);
         self.current_texture = Some(texture);
@@ -254,6 +319,18 @@ impl eframe::App for InspectorApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.pump_worker();
+        // Live apps stream accesskit-only frames until we explicitly ask for pixels. As
+        // soon as we've seen *any* frame but still have no texture, kick off a screenshot
+        // request so the central panel has something to display. Capped by
+        // `awaiting_screenshot` so we don't fire one per pump.
+        if self.connected
+            && !self.history.is_empty()
+            && self.current_texture.is_none()
+            && !self.awaiting_screenshot
+        {
+            self.send_command(InspectorCommand::Screenshot);
+            self.awaiting_screenshot = true;
+        }
         self.ensure_texture_uploaded(&ctx);
         // Reset hover each frame — either the pre-hit-test below (using the cached image
         // rect from the previous frame) or the tree's own hover detection, or the central
@@ -404,6 +481,53 @@ fn controls_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
             }
 
             ui.separator();
+            if ui
+                .add_enabled(app.connected, egui::Button::new("📷 Screenshot"))
+                .on_hover_text(
+                    "Request a fresh framebuffer screenshot from the peer. \
+                     Live `eframe` apps need this to send pixels; kittest harnesses already \
+                     stream them on every step.",
+                )
+                .clicked()
+            {
+                app.send_command(InspectorCommand::Screenshot);
+                app.awaiting_screenshot = true;
+            }
+
+            ui.separator();
+            // Resize: send a logical-point width/height to the peer. `InspectorCommand::Resize`
+            // maps to `Harness::set_size` for kittest peers and a `ViewportCommand::InnerSize`
+            // for live `eframe` apps.
+            if let Some((w, h)) = app.resize_target.as_mut() {
+                ui.add(
+                    egui::DragValue::new(w)
+                        .speed(1.0)
+                        .range(1..=8192)
+                        .prefix("w "),
+                )
+                .on_hover_text("Resize width (logical points)");
+                ui.label("×");
+                ui.add(
+                    egui::DragValue::new(h)
+                        .speed(1.0)
+                        .range(1..=8192)
+                        .prefix("h "),
+                )
+                .on_hover_text("Resize height (logical points)");
+                let (w, h) = (*w, *h);
+                if ui
+                    .add_enabled(app.connected, egui::Button::new("📐 Resize"))
+                    .on_hover_text("Send InspectorCommand::Resize with these dimensions")
+                    .clicked()
+                {
+                    app.send_command(InspectorCommand::Resize {
+                        width: w,
+                        height: h,
+                    });
+                }
+            }
+
+            ui.separator();
             if let Some(outcome) = &app.test_outcome {
                 if outcome.ok {
                     ui.colored_label(egui::Color32::from_rgb(80, 200, 120), "✅ test passed");
@@ -470,17 +594,19 @@ fn details_panel(app: &mut InspectorApp, ui: &mut egui::Ui) {
                     .default_open(true)
                     .show(ui, |ui| {
                         kv_grid(ui, "frame_grid", |ui| {
-                            if let Some(label) = &frame.label {
-                                ui.label("Test:");
+                            if let Some(label) = &app.peer_label {
+                                ui.label("Peer:");
                                 ui.monospace(label);
                                 ui.end_row();
                             }
                             ui.label("Step:");
                             ui.monospace(frame.step.to_string());
                             ui.end_row();
-                            ui.label("Size (px):");
-                            ui.monospace(format!("{} × {}", frame.width, frame.height));
-                            ui.end_row();
+                            if let Some(shot) = frame.screenshot.as_ref() {
+                                ui.label("Size (px):");
+                                ui.monospace(format!("{} × {}", shot.width, shot.height));
+                                ui.end_row();
+                            }
                             ui.label("Pixels per point:");
                             ui.monospace(format!("{:.2}", frame.pixels_per_point));
                             ui.end_row();
@@ -1033,14 +1159,12 @@ fn copy_history_as_gif(history: &[Frame], frame_rate: f32) -> Result<std::path::
 
     let last_idx = history.len() - 1;
     for (i, frame) in history.iter().enumerate() {
-        let Some(buffer) =
-            image::RgbaImage::from_raw(frame.width, frame.height, frame.rgba.clone())
-        else {
-            return Err(format!(
-                "frame {i} has inconsistent rgba size for {}×{}",
-                frame.width, frame.height
-            ));
+        let Some(shot) = frame.screenshot.as_ref() else {
+            continue;
         };
+        let buffer = image::load_from_memory(&shot.png)
+            .map_err(|err| format!("frame {i}: decode screenshot PNG failed: {err}"))?
+            .to_rgba8();
         let delay = if i == last_idx {
             hold_delay
         } else {

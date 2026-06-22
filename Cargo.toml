@@ -19,22 +19,21 @@ name = "kittest_inspector"
 path = "src/main.rs"
 
 [dependencies]
-# `inspector_api` brings in the wire protocol (Frame, HarnessMessage, ...) plus a
-# serde-enabled `egui` re-export. The whole protocol lives in `egui_kittest` so the inspector
-# can be released independently — pin the egui version to whichever release you support.
+# `egui_inspection` carries the wire protocol (Frame, HarnessMessage, ...) plus the
+# serde-enabled `egui` re-export. The `transport` feature adds the local-socket
+# connect/listen helpers we use to talk to the peer. Lives in its own crate so the inspector
+# pulls in only the protocol + transport — not the full `egui_kittest` harness.
 #
-# Temporarily pulling from the `lucas/kittest-inspect` branch on `lucasmerlin/egui` — that's
-# where `inspector_api` lives until it ships in a released `egui_kittest`. Flip to a plain
-# `version = "..."` dep once that lands.
-egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["inspector_api"] }
+# Temporarily pulling from `lucas/kittest-mcp` on `emilk/egui` — flip to a plain
+# `version = "..."` dep once `egui_inspection` ships in a release.
+egui_inspection = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["transport"] }
 
-# eframe + egui_extras need to come from the same egui checkout so their `egui` matches the
-# one re-exported by `egui_kittest` above (otherwise we get two `egui::Event` types that
-# don't unify). Drop the `git = ...` once all four crates ship with `inspector_api`.
+# eframe needs to come from the same egui checkout so its `egui` matches the one re-exported
+# by `egui_inspection` above (otherwise we get two `egui::Event` types that don't unify).
+# Drop the `git = ...` once `egui_inspection` is released.
 eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
-egui_extras = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["image"] }
 fs4 = { version = "0.13.1", default-features = false, features = ["sync"] }
-image = { version = "0.25.6", default-features = false, features = ["gif"] }
+image = { version = "0.25.6", default-features = false, features = ["gif", "png"] }
 # Cross-platform clipboard — same crate eframe uses — with `set_file_list` so apps that
 # accept pasted files (Slack, Discord, Finder, etc.) attach the GIF with animation intact.
 arboard = { version = "3.6.1", default-features = false }
@@ -51,13 +50,13 @@ eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspec
 egui = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspector-plugin", default-features = false, features = ["serde"] }
 
 
-# Local-development override: while iterating on the protocol alongside egui_kittest, pull
-# the four crates from a local checkout instead of the branch on github. Remove once the
-# protocol changes have landed in a release of egui_kittest.
+# Local-development override: while iterating on the protocol alongside egui_inspection, pull
+# the crates from a local checkout instead of the branch on github. Remove once the protocol
+# changes have landed in a release of egui_inspection.
 [patch."https://github.com/emilk/egui"]
+egui_inspection = { path = "/Users/lucas/code/egui/crates/egui_inspection" }
 egui_kittest = { path = "/Users/lucas/code/egui/crates/egui_kittest" }
 eframe = { path = "/Users/lucas/code/egui/crates/eframe" }
-egui_extras = { path = "/Users/lucas/code/egui/crates/egui_extras" }
 egui = { path = "/Users/lucas/code/egui/crates/egui" }
 
 [profile.release]
