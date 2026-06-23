@@ -948,7 +948,7 @@ dependencies = [
 [[package]]
 name = "ecolor"
 version = "0.34.3"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fegui-mcp-server#3de6fbaf5898a8ce565d4c300ddf60838afeaa69"
+source = "git+https://github.com/emilk/egui?branch=main#5ca09dc0b5201576237254994a1c16f36d448d87"
 dependencies = [
  "emath 0.34.3",
  "serde",
@@ -1010,7 +1010,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.34.3"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fegui-mcp-server#3de6fbaf5898a8ce565d4c300ddf60838afeaa69"
+source = "git+https://github.com/emilk/egui?branch=main#5ca09dc0b5201576237254994a1c16f36d448d87"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1083,7 +1083,7 @@ dependencies = [
 [[package]]
 name = "egui_inspection"
 version = "0.34.3"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fegui-mcp-server#3de6fbaf5898a8ce565d4c300ddf60838afeaa69"
+source = "git+https://github.com/emilk/egui?branch=main#5ca09dc0b5201576237254994a1c16f36d448d87"
 dependencies = [
  "egui 0.34.3",
  "rmp-serde",
@@ -1148,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.34.3"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fegui-mcp-server#3de6fbaf5898a8ce565d4c300ddf60838afeaa69"
+source = "git+https://github.com/emilk/egui?branch=main#5ca09dc0b5201576237254994a1c16f36d448d87"
 dependencies = [
  "serde",
 ]
@@ -1225,7 +1225,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.34.3"
-source = "git+https://github.com/emilk/egui?branch=lucas%2Fegui-mcp-server#3de6fbaf5898a8ce565d4c300ddf60838afeaa69"
+source = "git+https://github.com/emilk/egui?branch=main#5ca09dc0b5201576237254994a1c16f36d448d87"
 dependencies = [
  "ahash",
  "ecolor 0.34.3",
@@ -1242,7 +1242,7 @@ dependencies = [
  "smallvec",
  "unicode-general-category",
  "unicode-segmentation",
- "vello_cpu 0.0.8",
+ "vello_cpu 0.0.9",
 ]
 
 [[package]]
@@ -4025,22 +4025,6 @@ dependencies = [
 
 [[package]]
 name = "vello_common"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3361bff7f7d82c0c496b92048db83846691f0e844cc28dee92b1c824291b55ee"
-dependencies = [
- "bytemuck",
- "fearless_simd",
- "guillotiere",
- "hashbrown 0.17.1",
- "log",
- "peniko",
- "smallvec",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "vello_common"
 version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19d672facaa2d697285a786cd9d44d614cd2ce54cdc022504bf339f8fff3b750"
@@ -4069,14 +4053,14 @@ dependencies = [
 
 [[package]]
 name = "vello_cpu"
-version = "0.0.8"
+version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d8ded630e8316bb94a55881256506d1f3b9947b5f66db8a7d32ca7ba02decd0"
+checksum = "588691169aed86b5c8fb487266afee01323234e6fd0a3f2aaec0eaa8e4007f23"
 dependencies = [
  "bytemuck",
  "glifo",
  "hashbrown 0.17.1",
- "vello_common 0.0.8",
+ "vello_common 0.0.9",
 ]
 
 [[package]]

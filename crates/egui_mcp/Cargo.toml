@@ -22,13 +22,9 @@ rustdoc-args = ["--generate-link-to-definition"]
 name = "egui-mcp"
 path = "src/main.rs"
 
-# egui deps ride the `lucas/egui-mcp-server` branch, which carries both `egui_inspection` (the new
-# request/response inspection protocol) and `egui_mcp`'s reference consumer. This is a different
-# egui revision from the `kittest_inspector` crate (which is pinned to `lucas/kittest-inspect`), so
-# the deps are inlined here rather than shared via `[workspace.dependencies]`.
 [dependencies]
-egui_inspection = { git = "https://github.com/emilk/egui", branch = "lucas/egui-mcp-server", default-features = false }
-egui = { git = "https://github.com/emilk/egui", branch = "lucas/egui-mcp-server", default-features = false }
+egui_inspection = { git = "https://github.com/emilk/egui", branch = "main", default-features = false }
+egui = { git = "https://github.com/emilk/egui", branch = "main", default-features = false }
 # `enumn` gives `Role::n`, used to validate a role string against the full AccessKit role set.
 accesskit = { version = "0.24.0", features = ["enumn"] }
 accesskit_consumer = "0.35.0"

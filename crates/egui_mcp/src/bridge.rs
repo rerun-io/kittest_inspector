@@ -235,7 +235,9 @@ impl Bridge {
     /// On I/O failure or an unexpected response.
     pub async fn screenshot(&self, pixels_per_point: f32) -> Result<EncodedPng, String> {
         match self
-            .request(Request::GetScreenshot { pixels_per_point })
+            .request(Request::GetScreenshot {
+                pixels_per_point: Some(pixels_per_point),
+            })
             .await?
         {
             Response::Screenshot(png) => Ok(png),
