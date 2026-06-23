@@ -49,12 +49,90 @@ impl RectF {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct QueryFilter {
+/// The widget-matching constraints shared by `query_tree`'s filter and the action `Target`s.
+///
+/// An optional `role` plus up to one text predicate. All are case-insensitive and combined with
+/// logical AND; an all-`None` `Query` matches every node.
+#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
+pub struct Query {
+    /// Case-insensitive substring match against *either* `label` or `value`. Prefer this when you
+    /// just want "the widget showing this text" and don't care which field holds it — it's the
+    /// most robust choice across widget kinds.
+    pub content_contains: Option<String>,
     /// Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).
     /// An unrecognized role is rejected with an error that lists the roles present in the tree.
     pub role: Option<String>,
+    /// Case-insensitive substring match against the node's `label` (its accessible name) only.
+    /// Note that `Label`/monospace widgets carry their text in `value`, not `label` — for those,
+    /// use `content_contains` (or `value_contains`).
     pub label_contains: Option<String>,
+    /// Case-insensitive substring match against the node's `value` only (e.g. a text field's
+    /// contents, or a `Label`'s text).
+    pub value_contains: Option<String>,
+}
+
+impl Query {
+    /// True when no constraint is set (matches every node).
+    pub fn is_empty(&self) -> bool {
+        self.content_contains.is_none()
+            && self.role.is_none()
+            && self.label_contains.is_none()
+            && self.value_contains.is_none()
+    }
+
+    /// Does `node` satisfy every set constraint? (Visibility is the caller's concern.)
+    fn matches(&self, node: &Node<'_>) -> bool {
+        if let Some(needle) = &self.content_contains
+            && !contains_ci(&node.label().unwrap_or_default(), needle)
+            && !contains_ci(&node.value().unwrap_or_default(), needle)
+        {
+            return false;
+        }
+        if let Some(role) = &self.role
+            && !role.eq_ignore_ascii_case(&format!("{:?}", node.role()))
+        {
+            return false;
+        }
+        if let Some(needle) = &self.label_contains
+            && !contains_ci(&node.label().unwrap_or_default(), needle)
+        {
+            return false;
+        }
+        if let Some(needle) = &self.value_contains
+            && !contains_ci(&node.value().unwrap_or_default(), needle)
+        {
+            return false;
+        }
+        true
+    }
+
+    /// Human-readable description of the constraints, for "matched N nodes" / "no node" errors.
+    fn describe(&self) -> String {
+        let mut clauses = Vec::new();
+        if let Some(c) = &self.content_contains {
+            clauses.push(format!("label or value containing `{c}`"));
+        }
+        if let Some(r) = &self.role {
+            clauses.push(format!("role `{r}`"));
+        }
+        if let Some(l) = &self.label_contains {
+            clauses.push(format!("label containing `{l}`"));
+        }
+        if let Some(v) = &self.value_contains {
+            clauses.push(format!("value containing `{v}`"));
+        }
+        if clauses.is_empty() {
+            "the locator".to_owned()
+        } else {
+            clauses.join(" and ")
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct QueryFilter {
+    #[serde(flatten)]
+    pub query: Query,
     #[serde(default = "default_true")]
     pub visible_only: bool,
     #[serde(default = "default_limit")]
@@ -72,8 +150,7 @@ fn default_limit() -> usize {
 impl Default for QueryFilter {
     fn default() -> Self {
         Self {
-            role: None,
-            label_contains: None,
+            query: Query::default(),
             visible_only: true,
             limit: default_limit(),
         }
@@ -146,21 +223,13 @@ fn matches(node: &Node<'_>, filter: &QueryFilter) -> bool {
     if filter.visible_only && node.is_hidden() {
         return false;
     }
-    if let Some(role) = &filter.role
-        && !role.eq_ignore_ascii_case(&format!("{:?}", node.role()))
-    {
-        return false;
-    }
-    if let Some(needle) = &filter.label_contains {
-        let hay = node.label().unwrap_or_default();
-        if !hay
-            .to_ascii_lowercase()
-            .contains(&needle.to_ascii_lowercase())
-        {
-            return false;
-        }
-    }
-    true
+    filter.query.matches(node)
+}
+
+/// Case-insensitive substring test (ASCII-folded, matching how `role` is compared).
+fn contains_ci(hay: &str, needle: &str) -> bool {
+    hay.to_ascii_lowercase()
+        .contains(&needle.to_ascii_lowercase())
 }
 
 pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
@@ -185,35 +254,23 @@ pub fn accesskit_id(node: &Node<'_>) -> u64 {
     local.0
 }
 
-/// A resolved lookup target: a specific node `id`, or a role/label match.
+/// A resolved lookup target: a specific node `id`, or a role/text match.
 /// Built directly by the tools from a `Target` — never deserialized.
 #[derive(Debug, Clone)]
 pub enum Locator {
-    Id {
-        id: u64,
-    },
-    Match {
-        role: Option<String>,
-        label_contains: Option<String>,
-    },
+    Id { id: u64 },
+    Match { query: Query },
 }
 
 impl Locator {
-    /// Build a locator from raw tool fields: a parseable `id` wins, else a role/label match.
-    /// Returns `None` when no locator field is set.
-    pub fn from_fields(
-        id: Option<&str>,
-        role: Option<String>,
-        label_contains: Option<String>,
-    ) -> Option<Self> {
+    /// Build a locator from raw tool fields: a parseable `id` wins, else the `query` constraints.
+    /// Returns `None` when neither an `id` nor any `query` constraint is set.
+    pub fn from_fields(id: Option<&str>, query: Query) -> Option<Self> {
         if let Some(id) = id.and_then(|s| s.trim().parse::<u64>().ok()) {
             return Some(Self::Id { id });
         }
-        if role.is_some() || label_contains.is_some() {
-            return Some(Self::Match {
-                role,
-                label_contains,
-            });
+        if !query.is_empty() {
+            return Some(Self::Match { query });
         }
         None
     }
@@ -222,7 +279,7 @@ impl Locator {
 /// Resolve a locator to *exactly one* node for an action (click, focus, …).
 ///
 /// Like kittest's `get_by_*`, this is strict: an ambiguous locator is an error, not a silent
-/// "first match wins". A specific `id` resolves at most one node; a `role`/`label_contains` match
+/// "first match wins". A specific `id` resolves at most one node; a `role`/text match
 /// errors if it hits zero or more than one node, listing the candidates so the caller can narrow
 /// the filter or target a specific `id`. Use `query_tree` (which returns all matches) when you
 /// genuinely expect several.
@@ -241,20 +298,15 @@ pub fn resolve_unique<'a>(
             find_all(&root, &|n| accesskit_id(n) == *id, &mut found);
             one(found, pixels_per_point, &format!("id `{id}`"))
         }
-        Locator::Match {
-            role,
-            label_contains,
-        } => {
+        Locator::Match { query } => {
             let filter = QueryFilter {
-                role: role.clone(),
-                label_contains: label_contains.clone(),
+                query: query.clone(),
                 visible_only: true,
                 limit: usize::MAX,
             };
             let mut found = Vec::new();
             find_all(&root, &|n| matches(n, &filter), &mut found);
-            let what = describe_match(role.as_deref(), label_contains.as_deref());
-            one(found, pixels_per_point, &what)
+            one(found, pixels_per_point, &query.describe())
         }
     }
 }
@@ -276,18 +328,9 @@ fn one<'a>(
             let list =
                 serde_json::to_string_pretty(&views).unwrap_or_else(|_| format!("{n} nodes"));
             Err(format!(
-                "{what} matched {n} nodes — narrow `role`/`label_contains`, or target a specific `id`. Matches:\n{list}"
+                "{what} matched {n} nodes — narrow the locator (`content_contains`/`role`/`label_contains`/`value_contains`), or target a specific `id`. Matches:\n{list}"
             ))
         }
-    }
-}
-
-fn describe_match(role: Option<&str>, label_contains: Option<&str>) -> String {
-    match (role, label_contains) {
-        (Some(r), Some(l)) => format!("role `{r}` with label containing `{l}`"),
-        (Some(r), None) => format!("role `{r}`"),
-        (None, Some(l)) => format!("label containing `{l}`"),
-        (None, None) => "the locator".to_owned(),
     }
 }
 

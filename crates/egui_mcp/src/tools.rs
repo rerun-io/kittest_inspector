@@ -53,7 +53,7 @@ use serde_json::{Value, json};
 use tokio::sync::Mutex;
 
 use crate::bridge::{Bridge, TreeSnapshot};
-use crate::tree::{self, Locator, NodeView, QueryFilter};
+use crate::tree::{self, Locator, NodeView, Query, QueryFilter};
 
 // ---------------------------------------------------------------------------------------
 // UiServer + Server
@@ -179,12 +179,9 @@ pub struct Target {
     #[serde(default)]
     pub id: Option<String>,
 
-    /// Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).
-    /// An unrecognized role errors with the roles present in the tree.
-    #[serde(default)]
-    pub role: Option<String>,
-    #[serde(default)]
-    pub label_contains: Option<String>,
+    /// Widget-matching constraints (`role` and/or a text predicate); see `query_tree`.
+    #[serde(flatten)]
+    pub query: Query,
 
     /// Raw position in logical points (use instead of locator fields).
     #[serde(default)]
@@ -199,11 +196,7 @@ pub struct Pos2Lit {
 
 impl Target {
     fn as_locator(&self) -> Option<Locator> {
-        Locator::from_fields(
-            self.id.as_deref(),
-            self.role.clone(),
-            self.label_contains.clone(),
-        )
+        Locator::from_fields(self.id.as_deref(), self.query.clone())
     }
 }
 
@@ -230,12 +223,12 @@ fn resolve_in_tree(
     if let Some(p) = target.pos {
         return Ok((None, egui::Pos2::new(p.x, p.y)));
     }
-    if let Some(role) = &target.role {
+    if let Some(role) = &target.query.role {
         tree::validate_role(role, snap.tree.as_ref())?;
     }
-    let locator = target
-        .as_locator()
-        .ok_or("target requires `id`, `role`, `label_contains`, or `pos`")?;
+    let locator = target.as_locator().ok_or(
+        "target requires `id`, `content_contains`, `role`, `label_contains`, `value_contains`, or `pos`",
+    )?;
     let tree = snap.tree.as_ref().ok_or("no accesskit tree yet")?;
     let node = tree::resolve_unique(tree, &locator, snap.pixels_per_point)?;
     let view = tree::node_view(&node, snap.pixels_per_point);
@@ -397,8 +390,16 @@ pub struct WaitForArgs {
     /// An unrecognized role errors with the roles present in the tree.
     #[serde(default)]
     pub role: Option<String>,
+    /// Case-insensitive substring match against the node's `label` (accessible name) only.
     #[serde(default)]
     pub label_contains: Option<String>,
+    /// Case-insensitive substring match against the node's `value` only.
+    #[serde(default)]
+    pub value_contains: Option<String>,
+    /// Case-insensitive substring match against *either* `label` or `value`. Prefer this for
+    /// "wait until this text shows up" — `Label`/monospace text lives in `value`, not `label`.
+    #[serde(default)]
+    pub content_contains: Option<String>,
     #[serde(default = "default_wait_timeout")]
     pub timeout_secs: u64,
     #[serde(default = "default_min_matches")]
@@ -431,8 +432,15 @@ pub struct TypeTextArgs {
     /// An unrecognized role errors with the roles present in the tree.
     #[serde(default)]
     pub role: Option<String>,
+    /// Case-insensitive substring match against the node's `label` (accessible name) only.
     #[serde(default)]
     pub label_contains: Option<String>,
+    /// Case-insensitive substring match against the node's `value` only.
+    #[serde(default)]
+    pub value_contains: Option<String>,
+    /// Case-insensitive substring match against *either* `label` or `value` (most robust).
+    #[serde(default)]
+    pub content_contains: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -566,7 +574,7 @@ impl UiServer {
     ) -> Result<Json<QueryTreeResult>, ToolError> {
         let bridge = self.bridge();
         let snap = bridge.fetch_tree().await?;
-        if let Some(role) = &filter.role {
+        if let Some(role) = &filter.query.role {
             tree::validate_role(role, snap.tree.as_ref())?;
         }
         let nodes = match snap.tree {
@@ -604,7 +612,7 @@ impl UiServer {
     }
 
     /// Click the center of a node's bounding box, or a raw `pos` in logical points.
-    /// Specify either a locator (`id` from `query_tree` or `role`/`label_contains`) or `pos: { x, y }`.
+    /// Specify either a locator (`id` from `query_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.
     /// `button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).
     /// `count: 2` → double-click, `3` → triple.
     #[tool]
@@ -654,7 +662,7 @@ impl UiServer {
     }
 
     /// Primary-button drag from `start` to `end`.
-    /// Each target accepts the same fields as `click`: locator (`id`/`role`/`label_contains`) or `pos: {x, y}`.
+    /// Each target accepts the same fields as `click`: locator (`id`/`content_contains`/`role`/`label_contains`/`value_contains`) or `pos: {x, y}`.
     /// `steps` controls how many intermediate pointer-move events are emitted between press and release.
     #[tool]
     async fn drag(&self, Parameters(args): Parameters<DragArgs>) -> ToolResult<CallToolResult> {
@@ -718,23 +726,29 @@ impl UiServer {
     }
 
     /// Poll the widget tree until its conditions hold, or until `timeout_secs` elapses.
-    /// Waits until at least `min_matches` visible nodes match the `role`/`label_contains` filter (when one is given) *and* at least `min_steps` frames have rendered since the call began.
-    /// Requires `role`, `label_contains`, or a non-zero `min_steps`.
+    /// Waits until at least `min_matches` visible nodes match the filter (when one is given) *and* at least `min_steps` frames have rendered since the call began.
+    /// The text filter is `role` and/or one of `content_contains` (matches `label` or `value` — prefer this; e.g. monospace/`Label` text lives in `value`), `label_contains`, `value_contains`.
+    /// Requires a filter (`content_contains`/`role`/`label_contains`/`value_contains`) or a non-zero `min_steps`.
     #[tool]
     async fn wait_for(
         &self,
         Parameters(args): Parameters<WaitForArgs>,
     ) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
-        let has_filter = args.role.is_some() || args.label_contains.is_some();
+        let query = Query {
+            role: args.role.clone(),
+            label_contains: args.label_contains.clone(),
+            value_contains: args.value_contains.clone(),
+            content_contains: args.content_contains.clone(),
+        };
+        let has_filter = !query.is_empty();
         if !has_filter && args.min_steps == 0 {
             return Err(
-                "wait_for requires `role`, `label_contains`, or a non-zero `min_steps`".to_owned(),
+                "wait_for requires a filter (`content_contains`/`role`/`label_contains`/`value_contains`) or a non-zero `min_steps`".to_owned(),
             );
         }
         let filter = QueryFilter {
-            role: args.role.clone(),
-            label_contains: args.label_contains.clone(),
+            query,
             visible_only: true,
             limit: args.min_matches as usize,
         };
@@ -748,7 +762,7 @@ impl UiServer {
                 .saturating_sub(*start_step.get_or_insert(snap.step));
             // Fail fast on a typo'd role rather than polling until timeout, listing the roles
             // currently in the tree. A valid-but-absent role passes and keeps polling.
-            if let Some(role) = &filter.role {
+            if let Some(role) = &filter.query.role {
                 tree::validate_role(role, snap.tree.as_ref())?;
             }
             let matches: Vec<NodeView> = match (has_filter, snap.tree) {
@@ -763,10 +777,12 @@ impl UiServer {
             }
             if tokio::time::Instant::now() >= deadline {
                 return Err(format!(
-                    "wait_for timed out after {}s (role={:?}, label_contains={:?}, found {}, min_steps={}, steps_waited={})",
+                    "wait_for timed out after {}s (role={:?}, label_contains={:?}, value_contains={:?}, content_contains={:?}, found {}, min_steps={}, steps_waited={})",
                     args.timeout_secs,
                     args.role,
                     args.label_contains,
+                    args.value_contains,
+                    args.content_contains,
                     matches.len(),
                     args.min_steps,
                     steps_waited,
@@ -777,7 +793,7 @@ impl UiServer {
     }
 
     /// Type text into the currently focused widget.
-    /// Optionally focus a node first (by `id` or `role`/`label_contains`) — this uses an AccessKit focus request, not a click, so it won't move the cursor or clear an existing text selection.
+    /// Optionally focus a node first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an AccessKit focus request, not a click, so it won't move the cursor or clear an existing text selection.
     #[tool]
     async fn type_text(
         &self,
@@ -786,11 +802,13 @@ impl UiServer {
         let bridge = self.bridge();
         // Optionally focus a target first. Unlike a click, an AccessKit focus request doesn't
         // move the text cursor or reset the selection.
-        let focused_id = match Locator::from_fields(
-            args.id.as_deref(),
-            args.role.clone(),
-            args.label_contains,
-        ) {
+        let query = Query {
+            role: args.role.clone(),
+            label_contains: args.label_contains,
+            value_contains: args.value_contains,
+            content_contains: args.content_contains,
+        };
+        let focused_id = match Locator::from_fields(args.id.as_deref(), query) {
             Some(locator) => {
                 let snap = bridge.fetch_tree().await?;
                 if let Some(role) = &args.role {
@@ -932,8 +950,9 @@ Getting oriented:
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
 
 Targeting widgets:
-- Prefer locators — an `id` from `query_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
-- A locator in an action must match exactly one node. If `role`/`label_contains` matches several, the call errors and lists the candidates — narrow the filter or target a specific `id`. Use `query_tree` when you want every match.
+- Prefer locators — an `id` from `query_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
+- For text matches prefer `content_contains`: it matches a node's `label` (accessible name) OR its `value`. This matters because many widgets (`Label`, monospace text, counters) carry their text in `value` with an empty `label`, so `label_contains` alone silently misses them. Use `label_contains`/`value_contains` only when you specifically need to match one field.
+- A locator in an action must match exactly one node. If it matches several, the call errors and lists the candidates — narrow the filter (add a `role`, or switch to a more specific text match) or target a specific `id`. Use `query_tree` when you want every match.
 
 Acting and verifying:
 - After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.

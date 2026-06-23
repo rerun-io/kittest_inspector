@@ -71,3 +71,10 @@ test and explore your app.
 > app is in the background, but capturing a screenshot requires a rendered frame — which the OS
 > won't produce for a fully-occluded or minimized window (notably on macOS). Bring the window to
 > the foreground to capture it.
+
+
+## Developing egui_mcp
+
+This repo has a `.mcp.json` that claude will pick up. `cargo build -p egui_mcp` to compile the mcp server.
+Then run `/mcp` and choose reconnect on egui-mcp, to restart the server.
+Run `(cd ../egui && EGUI_INSPECTION=1 cargo run -p egui_demo_app)` to test the mcp. 
