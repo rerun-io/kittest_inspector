@@ -1,6 +1,6 @@
 ---
 source: crates/egui_mcp/src/tools.rs
-assertion_line: 1091
+assertion_line: 1088
 expression: surface
 ---
 # Server instructions
@@ -110,6 +110,17 @@ Conventions:
   "description": "Click the center of a node's bounding box, or a raw `pos` in logical points.\nSpecify either a locator (`id` from `query_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.\n`button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).\n`count: 2` → double-click, `3` → triple.",
   "inputSchema": {
     "$defs": {
+      "PointerButtonArg": {
+        "description": "Which mouse button a `click`/`drag` uses. `left`/`right` are accepted as aliases for\n`primary`/`secondary`.",
+        "enum": [
+          "primary",
+          "secondary",
+          "middle",
+          "extra1",
+          "extra2"
+        ],
+        "type": "string"
+      },
       "Pos2Lit": {
         "properties": {
           "x": {
@@ -158,9 +169,9 @@ Conventions:
     "description": "The widget-matching constraints shared by `query_tree`'s filter and the action `Target`s.\n\nAn optional `role` plus up to one text predicate. All are case-insensitive and combined with\nlogical AND; an all-`None` `Query` matches every node.",
     "properties": {
       "button": {
+        "$ref": "#/$defs/PointerButtonArg",
         "default": "primary",
-        "description": "`primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`).",
-        "type": "string"
+        "description": "`primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`). Defaults to `primary`."
       },
       "content_contains": {
         "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",

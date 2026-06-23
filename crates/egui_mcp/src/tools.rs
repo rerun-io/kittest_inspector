@@ -150,11 +150,22 @@ impl Default for Server {
 }
 
 // ---------------------------------------------------------------------------------------
-// Helpers: ToolResult shaping
+// General helpers / utils
 // ---------------------------------------------------------------------------------------
 
 fn text_error(msg: impl Into<String>) -> CallToolResult {
     CallToolResult::error(vec![Content::text(msg.into())])
+}
+
+fn content_as_text(c: &Content) -> Option<&str> {
+    match &c.raw {
+        rmcp::model::RawContent::Text(t) => Some(t.text.as_str()),
+        _ => None,
+    }
+}
+
+fn content_is_image(c: &Content) -> bool {
+    matches!(&c.raw, rmcp::model::RawContent::Image(_))
 }
 
 /// A recoverable tool failure (no app connected, node not found, bad argument, a bridge I/O
@@ -322,24 +333,47 @@ impl PressKeyModifiers {
     }
 }
 
+/// Which mouse button a `click`/`drag` uses. `left`/`right` are accepted as aliases for
+/// `primary`/`secondary`.
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PointerButtonArg {
+    #[default]
+    #[serde(alias = "left")]
+    Primary,
+    #[serde(alias = "right")]
+    Secondary,
+    Middle,
+    Extra1,
+    Extra2,
+}
+
+impl PointerButtonArg {
+    fn to_egui(self) -> egui::PointerButton {
+        match self {
+            Self::Primary => egui::PointerButton::Primary,
+            Self::Secondary => egui::PointerButton::Secondary,
+            Self::Middle => egui::PointerButton::Middle,
+            Self::Extra1 => egui::PointerButton::Extra1,
+            Self::Extra2 => egui::PointerButton::Extra2,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ClickArgs {
     #[serde(flatten)]
     pub target: Target,
 
-    /// `primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`).
-    #[serde(default = "default_click_button")]
-    pub button: String,
+    /// `primary`/`secondary`/`middle`/`extra1`/`extra2` (or aliases `left`/`right`). Defaults to `primary`.
+    #[serde(default)]
+    pub button: PointerButtonArg,
 
     /// `2` → double-click; `3` → triple-click.
     #[serde(default = "default_one")]
     pub count: u32,
     #[serde(default)]
     pub modifiers: PressKeyModifiers,
-}
-
-fn default_click_button() -> String {
-    "primary".into()
 }
 
 fn default_one() -> u32 {
@@ -599,7 +633,36 @@ impl UiServer {
     #[tool]
     async fn click(&self, Parameters(args): Parameters<ClickArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
-        Ok(CallToolResult::structured(click_inner(bridge, args).await?))
+        let button = args.button.to_egui();
+        let count = args.count.max(1);
+        let modifiers = args.modifiers.to_egui();
+        let (node_id, center) = resolve_target(bridge, &args.target).await?;
+
+        // Press/release pairs share one frame's input time, so egui's multi-click detection
+        // turns `count` into double/triple clicks.
+        let mut events = vec![Event::PointerMoved(center)];
+        for _ in 0..count {
+            events.push(Event::PointerButton {
+                pos: center,
+                button,
+                pressed: true,
+                modifiers,
+            });
+            events.push(Event::PointerButton {
+                pos: center,
+                button,
+                pressed: false,
+                modifiers,
+            });
+        }
+        bridge.apply_events(events).await?;
+        Ok(CallToolResult::structured(json!({
+            "ok": true,
+            "clicked_id": node_id,
+            "pos": [center.x, center.y],
+            "button": args.button,
+            "count": count,
+        })))
     }
 
     /// Move the pointer over a node (or raw `pos`) without clicking.
@@ -983,72 +1046,6 @@ impl ServerHandler for Server {
         }
         self.ui_router.get(name).cloned()
     }
-}
-
-// ---------------------------------------------------------------------------------------
-// Batch result flattening
-// ---------------------------------------------------------------------------------------
-
-fn content_as_text(c: &Content) -> Option<&str> {
-    match &c.raw {
-        rmcp::model::RawContent::Text(t) => Some(t.text.as_str()),
-        _ => None,
-    }
-}
-
-fn content_is_image(c: &Content) -> bool {
-    matches!(&c.raw, rmcp::model::RawContent::Image(_))
-}
-
-// ---------------------------------------------------------------------------------------
-// Shared action helpers — `click_inner` is reused by `type_text`'s focus-click;
-// `parse_pointer_button` by `click_inner`.
-// ---------------------------------------------------------------------------------------
-
-fn parse_pointer_button(name: &str) -> ToolResult<egui::PointerButton> {
-    match name.to_ascii_lowercase().as_str() {
-        "primary" | "left" => Ok(egui::PointerButton::Primary),
-        "secondary" | "right" => Ok(egui::PointerButton::Secondary),
-        "middle" => Ok(egui::PointerButton::Middle),
-        "extra1" => Ok(egui::PointerButton::Extra1),
-        "extra2" => Ok(egui::PointerButton::Extra2),
-        other => Err(format!(
-            "unknown button `{other}` — expected primary/secondary/middle/extra1/extra2 (or left/right)"
-        )),
-    }
-}
-
-async fn click_inner(bridge: &Bridge, args: ClickArgs) -> ToolResult<Value> {
-    let button = parse_pointer_button(&args.button)?;
-    let count = args.count.max(1);
-    let modifiers = args.modifiers.to_egui();
-    let (node_id, center) = resolve_target(bridge, &args.target).await?;
-
-    // Press/release pairs share one frame's input time, so egui's multi-click detection
-    // turns `count` into double/triple clicks.
-    let mut events = vec![Event::PointerMoved(center)];
-    for _ in 0..count {
-        events.push(Event::PointerButton {
-            pos: center,
-            button,
-            pressed: true,
-            modifiers,
-        });
-        events.push(Event::PointerButton {
-            pos: center,
-            button,
-            pressed: false,
-            modifiers,
-        });
-    }
-    bridge.apply_events(events).await?;
-    Ok(json!({
-        "ok": true,
-        "clicked_id": node_id,
-        "pos": [center.x, center.y],
-        "button": args.button,
-        "count": count,
-    }))
 }
 
 #[cfg(test)]
