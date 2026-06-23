@@ -386,20 +386,10 @@ pub struct ResizeArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct WaitForArgs {
-    /// Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).
-    /// An unrecognized role errors with the roles present in the tree.
-    #[serde(default)]
-    pub role: Option<String>,
-    /// Case-insensitive substring match against the node's `label` (accessible name) only.
-    #[serde(default)]
-    pub label_contains: Option<String>,
-    /// Case-insensitive substring match against the node's `value` only.
-    #[serde(default)]
-    pub value_contains: Option<String>,
-    /// Case-insensitive substring match against *either* `label` or `value`. Prefer this for
-    /// "wait until this text shows up" — `Label`/monospace text lives in `value`, not `label`.
-    #[serde(default)]
-    pub content_contains: Option<String>,
+    /// Which nodes to wait for (`content_contains` and/or `role`/`label_contains`/`value_contains`);
+    /// see `query_tree`. Omit every constraint to wait on `min_steps` alone.
+    #[serde(flatten)]
+    pub query: Query,
     #[serde(default = "default_wait_timeout")]
     pub timeout_secs: u64,
     #[serde(default = "default_min_matches")]
@@ -428,19 +418,10 @@ pub struct TypeTextArgs {
     #[serde(default)]
     pub id: Option<String>,
 
-    /// Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).
-    /// An unrecognized role errors with the roles present in the tree.
-    #[serde(default)]
-    pub role: Option<String>,
-    /// Case-insensitive substring match against the node's `label` (accessible name) only.
-    #[serde(default)]
-    pub label_contains: Option<String>,
-    /// Case-insensitive substring match against the node's `value` only.
-    #[serde(default)]
-    pub value_contains: Option<String>,
-    /// Case-insensitive substring match against *either* `label` or `value` (most robust).
-    #[serde(default)]
-    pub content_contains: Option<String>,
+    /// Optional focus target by match (`content_contains` and/or `role`/`label_contains`/`value_contains`);
+    /// see `query_tree`. Omit all locator fields to type into whatever is currently focused.
+    #[serde(flatten)]
+    pub query: Query,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -735,20 +716,14 @@ impl UiServer {
         Parameters(args): Parameters<WaitForArgs>,
     ) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
-        let query = Query {
-            role: args.role.clone(),
-            label_contains: args.label_contains.clone(),
-            value_contains: args.value_contains.clone(),
-            content_contains: args.content_contains.clone(),
-        };
-        let has_filter = !query.is_empty();
+        let has_filter = !args.query.is_empty();
         if !has_filter && args.min_steps == 0 {
             return Err(
                 "wait_for requires a filter (`content_contains`/`role`/`label_contains`/`value_contains`) or a non-zero `min_steps`".to_owned(),
             );
         }
         let filter = QueryFilter {
-            query,
+            query: args.query.clone(),
             visible_only: true,
             limit: args.min_matches as usize,
         };
@@ -777,12 +752,12 @@ impl UiServer {
             }
             if tokio::time::Instant::now() >= deadline {
                 return Err(format!(
-                    "wait_for timed out after {}s (role={:?}, label_contains={:?}, value_contains={:?}, content_contains={:?}, found {}, min_steps={}, steps_waited={})",
+                    "wait_for timed out after {}s (content_contains={:?}, role={:?}, label_contains={:?}, value_contains={:?}, found {}, min_steps={}, steps_waited={})",
                     args.timeout_secs,
-                    args.role,
-                    args.label_contains,
-                    args.value_contains,
-                    args.content_contains,
+                    args.query.content_contains,
+                    args.query.role,
+                    args.query.label_contains,
+                    args.query.value_contains,
                     matches.len(),
                     args.min_steps,
                     steps_waited,
@@ -802,16 +777,10 @@ impl UiServer {
         let bridge = self.bridge();
         // Optionally focus a target first. Unlike a click, an AccessKit focus request doesn't
         // move the text cursor or reset the selection.
-        let query = Query {
-            role: args.role.clone(),
-            label_contains: args.label_contains,
-            value_contains: args.value_contains,
-            content_contains: args.content_contains,
-        };
-        let focused_id = match Locator::from_fields(args.id.as_deref(), query) {
+        let focused_id = match Locator::from_fields(args.id.as_deref(), args.query.clone()) {
             Some(locator) => {
                 let snap = bridge.fetch_tree().await?;
-                if let Some(role) = &args.role {
+                if let Some(role) = &args.query.role {
                     tree::validate_role(role, snap.tree.as_ref())?;
                 }
                 let tree = snap.tree.as_ref().ok_or("no accesskit tree yet")?;
