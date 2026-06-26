@@ -35,13 +35,18 @@ ignore = []
 
 [bans]
 multiple-versions = "deny"
-wildcards = "deny"
+wildcards = "warn" # kittest_inspector uses git deps that have no version numbers
 deny = [
   { name = "openssl", reason = "Use rustls" },
   { name = "openssl-sys", reason = "Use rustls" },
 ]
 skip = []
-skip-tree = []
+skip-tree = [
+  # kittest_inspector uses a git branch of egui that is a different version from the one used by
+  # egui_mcp, which causes many transitive duplicate-version errors. Since kittest_inspector is
+  # an unpublished, experimental crate, we skip its dep tree here.
+  { name = "kittest_inspector" },
+]
 
 
 [licenses]

@@ -72,10 +72,14 @@ exclude = [
   'https://fonts.gstatic.com/',    # Font API entrypoint, not a link.
   'https://tel.rerun.io/',         # Analytics endpoint.
 
+  # GitHub media assets (videos/images) require auth and can be inaccessible to link checkers.
+  'https://github.com/user-attachments',
+
   # Avoid rate limiting.
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
-  'https://github.com/rerun-io/rerun/commit/\.*', # Ignore links to our own commits (typically in changelog).
-  'https://github.com/rerun-io/rerun/pull/\.*',   # Ignore links to our own pull requests (typically in changelog).
+
+  # docs.rs links for crates that may not be published yet.
+  'https://docs.rs/egui_mcp',
 
   # Used in rerun_template repo until the user search-replaces `new_repo_name`
   'https://github.com/rerun-io/new_repo_name',
