@@ -30,7 +30,11 @@ all-features = true
 
 [advisories]
 version = 2
-ignore = []
+ignore = [
+  # bincode is an indirect dep through rmcp. The bincode team ceased development due to a
+  # harassment incident; there is no functional security risk, just no future updates.
+  { id = "RUSTSEC-2025-0141", reason = "Transitive dep via rmcp; no security impact, only unmaintained status" },
+]
 
 
 [bans]
