@@ -23,8 +23,8 @@ name = "egui-mcp"
 path = "src/main.rs"
 
 [dependencies]
-egui = { workspace = true }
-egui_inspection = { workspace = true }
+egui.workspace = true
+egui_inspection.workspace = true
 accesskit.workspace = true
 accesskit_consumer.workspace = true
 base64.workspace = true

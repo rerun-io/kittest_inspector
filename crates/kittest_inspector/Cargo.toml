@@ -27,21 +27,26 @@ path = "src/main.rs"
 
 # We'll need to add some more features to the inspection protocol before we can get the inspector updated to main
 [dependencies]
-eframe = { workspace = true }
-egui_kittest = { workspace = true }
-image = { workspace = true }
 # Cross-platform clipboard — same crate eframe uses — with `set_file_list` so apps that
 # accept pasted files (Slack, Discord, Finder, etc.) attach the GIF with animation intact.
-arboard = { workspace = true }
+arboard.workspace = true
+eframe.workspace = true
+egui_kittest.workspace = true
+image.workspace = true
 
 
 [dev-dependencies]
 # Launch the inspector under egui_kittest for integration tests. `eframe` lets us wrap
 # `InspectorApp` directly; `wgpu` + `snapshot` provide the renderer + `Harness::snapshot`.
-egui_kittest = { workspace = true, features = ["eframe", "wgpu", "snapshot", "inspector"] }
+egui_kittest = { workspace = true, features = [
+    "eframe",
+    "wgpu",
+    "snapshot",
+    "inspector",
+] }
 # Same source as the `[dependencies]` entry — cargo unifies them, and duplicating the
 # declaration keeps tests able to name `eframe` (and `eframe::egui`) directly.
-eframe = { workspace = true }
+eframe.workspace = true
 
 
 [lints]
