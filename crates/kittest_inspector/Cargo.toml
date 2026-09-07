@@ -29,7 +29,6 @@ path = "src/main.rs"
 [dependencies]
 eframe = { workspace = true }
 egui_kittest = { workspace = true }
-fs4 = { workspace = true }
 image = { workspace = true }
 # Cross-platform clipboard — same crate eframe uses — with `set_file_list` so apps that
 # accept pasted files (Slack, Discord, Finder, etc.) attach the GIF with animation intact.

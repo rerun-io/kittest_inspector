@@ -26,7 +26,6 @@ eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspec
 egui = { version = "0.36.0", default-features = false }
 egui_inspection = { version = "0.36.0", default-features = false }
 egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["inspector_api"] }
-fs4 = { version = "0.13.1", default-features = false, features = ["sync"] }
 image = { version = "0.25.6", default-features = false, features = ["gif"] }
 insta = "1.48"
 rmcp = { version = "3.2", features = ["server", "macros", "transport-io", "schemars"] }
