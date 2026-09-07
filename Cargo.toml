@@ -18,8 +18,8 @@ repository = "https://github.com/rerun-io/kittest_inspector"
 
 [workspace.dependencies]
 # `enumn` gives `Role::n`, used to validate a role string against the full AccessKit role set.
-accesskit = { version = "0.24.0", features = ["enumn"] }
-accesskit_consumer = "0.37.0"
+accesskit = { version = "0.24.1", features = ["enumn"] } # 0.25 would duplicate the accesskit 0.24 that egui 0.36 uses
+accesskit_consumer = "0.38.0" # 0.39 needs accesskit 0.25, but egui 0.36 is still on accesskit 0.24
 arboard = { version = "3.6.1", default-features = false }
 base64 = "0.23.1"
 eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
