@@ -20,7 +20,6 @@
 //! produce a handful of harness steps (type, click, click, …) so you can walk through
 //! history, try Control mode, inspect widget bounds, etc.
 
-use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 
