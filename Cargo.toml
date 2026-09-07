@@ -17,6 +17,31 @@ repository = "https://github.com/rerun-io/kittest_inspector"
 # protocol) — two different revisions that can't share one workspace dep entry, so each crate
 # inlines its own egui git deps.
 
+[workspace.dependencies]
+# `enumn` gives `Role::n`, used to validate a role string against the full AccessKit role set.
+accesskit = { version = "0.24.0", features = ["enumn"] }
+accesskit_consumer = "0.37.0"
+arboard = { version = "3.6.1", default-features = false }
+base64 = "0.23"
+fs4 = { version = "0.13.1", default-features = false, features = ["sync"] }
+image = { version = "0.25.6", default-features = false, features = ["gif"] }
+insta = "1.48"
+rmcp = { version = "3.2", features = ["server", "macros", "transport-io", "schemars"] }
+schemars = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.49", features = [
+  "rt-multi-thread",
+  "io-std",
+  "io-util",
+  "net",
+  "sync",
+  "macros",
+  "time",
+  "signal",
+] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
 [profile.release]
 opt-level = 2
 

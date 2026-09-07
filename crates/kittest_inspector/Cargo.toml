@@ -23,11 +23,11 @@ path = "src/main.rs"
 egui_kittest = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["inspector_api"] }
 
 eframe = { git = "https://github.com/emilk/egui", branch = "lucas/kittest-inspect", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
-fs4 = { version = "0.13.1", default-features = false, features = ["sync"] }
-image = { version = "0.25.6", default-features = false, features = ["gif"] }
+fs4 = { workspace = true }
+image = { workspace = true }
 # Cross-platform clipboard — same crate eframe uses — with `set_file_list` so apps that
 # accept pasted files (Slack, Discord, Finder, etc.) attach the GIF with animation intact.
-arboard = { version = "3.6.1", default-features = false }
+arboard = { workspace = true }
 
 
 [dev-dependencies]
