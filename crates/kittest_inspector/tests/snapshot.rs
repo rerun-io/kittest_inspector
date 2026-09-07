@@ -8,6 +8,7 @@
 
 use std::sync::mpsc;
 
+use eframe::egui;
 use egui::accesskit::{Node, NodeId, Rect as AkRect, Role, Tree, TreeId, TreeUpdate};
 use egui_kittest::Harness;
 use egui_kittest::inspector_api::{Frame, SourceView};

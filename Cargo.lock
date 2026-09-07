@@ -2139,7 +2139,6 @@ version = "0.2.0"
 dependencies = [
  "arboard",
  "eframe",
- "egui 0.34.1",
  "egui_kittest",
  "fs4",
  "image",
