@@ -14,7 +14,7 @@ const UNKNOWN_ROLE: &str = "Unknown";
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NodeView {
-    /// Node id in hex, used with `click`, `type_text`, and `get_node`.
+    /// Node id, used with `click`, `type_text`, and `get_node`.
     pub id: String,
     pub role: String,
     pub label: Option<String>,
@@ -38,7 +38,7 @@ pub struct NodeView {
 /// Nodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
-    /// Node id in hex, used with `click`, `type_text`, and `get_node`.
+    /// Node id, used with `click`, `type_text`, and `get_node`.
     pub id: String,
 
     /// Omitted for a role of `Unknown`, which carries no information.

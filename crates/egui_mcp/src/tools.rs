@@ -194,7 +194,7 @@ type ToolResult<T> = Result<T, ToolError>;
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct Target {
-    /// Node id (hex) from `query_tree`.
+    /// Node id from `query_tree`.
     #[serde(default)]
     pub id: Option<String>,
 
@@ -310,7 +310,7 @@ fn default_pixels_per_point() -> f32 {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetNodeArgs {
-    /// Node id, in hex, as returned by `query_tree`.
+    /// Node id, as returned by `query_tree`.
     pub id: String,
 }
 
@@ -645,7 +645,7 @@ impl UiServer {
         let bridge = self.bridge();
         let id = tree::parse_id(&args.id).ok_or_else(|| {
             format!(
-                "invalid id `{}` — expected hex, as returned by `query_tree`",
+                "invalid id `{}` — pass an `id` exactly as `query_tree` returned it",
                 args.id
             )
         })?;
