@@ -125,7 +125,7 @@ fn demo_app_tree() -> Tree {
 }
 
 fn query_app(filter: &QueryFilter) -> String {
-    let nodes = query(&demo_app_tree(), filter, 1.0);
+    let nodes = query(&demo_app_tree(), filter, 1.0).expect("no missing `root`");
     serde_json::to_string_pretty(&nodes).expect("serialize")
 }
 
@@ -194,7 +194,8 @@ fn a_long_label_is_cut_short_but_still_matchable() {
             ..Default::default()
         },
         1.0,
-    );
+    )
+    .expect("no missing `root`");
     let label = matched.first().expect("the long label matched");
     let text = label.value.as_deref().expect("a label's text is its value");
     assert!(
@@ -236,7 +237,7 @@ fn an_excluded_panel_takes_its_text_with_it() {
     };
 
     let tree = demo_app_tree();
-    let unfiltered = query(&tree, &filter(None), 1.0);
+    let unfiltered = query(&tree, &filter(None), 1.0).expect("no missing `root`");
     assert!(
         unfiltered
             .iter()
@@ -245,8 +246,11 @@ fn an_excluded_panel_takes_its_text_with_it() {
     );
 
     // The panel itself carries no text, so it is excluded by the id of the node holding it.
-    let chat_panel = find_container_of(&query(&tree, &QueryFilter::default(), 1.0), "Chat")
-        .expect("the chat panel is in the tree");
+    let chat_panel = find_container_of(
+        &query(&tree, &QueryFilter::default(), 1.0).expect("no missing `root`"),
+        "Chat",
+    )
+    .expect("the chat panel is in the tree");
     let excluded = query(
         &tree,
         &filter(Some(Exclusion {
@@ -291,7 +295,7 @@ fn every_returned_node_is_actionable() {
         }
     }
 
-    let nodes = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
+    let nodes = query(&demo_app_tree(), &QueryFilter::default(), 1.0).expect("no missing `root`");
     assert!(!nodes.is_empty(), "the app has widgets");
     check(&nodes);
 }

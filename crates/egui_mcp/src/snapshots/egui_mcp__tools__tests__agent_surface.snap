@@ -9,6 +9,7 @@ This mcp drives a live egui app: it reads the app's accessibility tree and synth
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
 - Start most tasks with `widget_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
+- When a widget reports `omitted_children`, query `widget_tree` again with that widget's `id` as `root` to walk just that part of the app.
 - `widget_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short. A trailing ` […]` in a `label` or `value` means exactly that — the text goes on, and `get_widget` on that widget's `id` returns all of it, along with its `bounds` in logical points and its parent. Filters always match the full text, so searching for a phrase from past the cut still finds the widget.
 
 Targeting widgets:
@@ -922,7 +923,7 @@ Conventions:
 
 {
   "name": "widget_tree",
-  "description": "Walk the app's widget tree and return the widgets matching the filter, nested by ancestry: each one carries the matches from its own subtree in `children`.\nWidgets in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\n`limit` (200 by default) caps how many widgets come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any widget whose children were cut reports how many in `omitted_children` — query that widget's `id` to see them.\n`exclude` leaves a subtree out — pass a widget `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.\nUse the returned `id` with `click`, `type_text`, or `get_widget`.\nThe widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.\n`label` and `value` are cut short at 100 characters, marked with a trailing ` […]`; the filters still match against the whole text, so a phrase past the cut still finds its widget.\nEmpty scaffolding is dropped: a widget with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.",
+  "description": "Walk the app's widget tree and return the widgets matching the filter, nested by ancestry: each one carries the matches from its own subtree in `children`.\nWidgets in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\n`limit` (200 by default) caps how many widgets come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any widget whose children were cut reports how many in `omitted_children`.\n`root` starts the walk at one widget instead of the app's root — pass the `id` of a widget that reported `omitted_children` to see that part of the tree in full.\n`exclude` leaves a subtree out — pass a widget `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.\nUse the returned `id` with `click`, `type_text`, or `get_widget`.\nThe widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.\n`label` and `value` are cut short at 100 characters, marked with a trailing ` […]`; the filters still match against the whole text, so a phrase past the cut still finds its widget.\nEmpty scaffolding is dropped: a widget with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.",
   "inputSchema": {
     "$defs": {
       "Exclusion": {
@@ -1008,6 +1009,14 @@ Conventions:
           "null"
         ]
       },
+      "root": {
+        "default": null,
+        "description": "Walk this widget's subtree instead of the whole app — the way to see the children a\n`limit` left out, by passing the id of the widget that reported `omitted_children`.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "value_contains": {
         "description": "Case-insensitive substring match against the widget's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
         "type": [
@@ -1055,7 +1064,7 @@ Conventions:
             ]
           },
           "omitted_children": {
-            "description": "How many of this widget's children `limit` left out. Raise `limit`, narrow the filter,\nor query this widget's `id` to see them.",
+            "description": "How many of this widget's children `limit` left out. Query again with this widget's\n`id` as `root` to see them, or raise `limit`, or narrow the filter.",
             "format": "uint",
             "minimum": 0,
             "type": "integer"
