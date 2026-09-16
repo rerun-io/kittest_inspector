@@ -35,7 +35,8 @@ pub struct NodeView {
 /// Deliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an
 /// agent to read past, and actions take an `id` anyway. `get_node` has the full detail.
 ///
-/// Nodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].
+/// A node that says nothing — no children, no `label`, no `value` and no role — is dropped
+/// entirely.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
     /// Node id, used with `click`, `type_text`, and `get_node`.
