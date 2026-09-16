@@ -675,7 +675,7 @@ Conventions:
   "outputSchema": {
     "$defs": {
       "TreeNode": {
-        "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_node` has the full detail.\n\nNodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].",
+        "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_node` has the full detail.\n\nA node that says nothing — no children, no `label`, no `value` and no role — is dropped\nentirely.",
         "properties": {
           "children": {
             "description": "`default` keeps the derived schema honest: a leaf omits the field entirely.",
