@@ -58,6 +58,14 @@ impl DemoApp {
             }
         });
 
+        // An agent panel living inside the app it drives, as a host embedding this server has.
+        // It echoes the user's own words, so a text query hits it before it hits the app.
+        egui::Panel::right("agent chat").show(ui, |ui| {
+            ui.heading("Chat");
+            ui.label("where is the volume slider?");
+            ui.label("Second row of the settings panel.");
+        });
+
         egui::CentralPanel::default().show(ui, |ui| {
             ui.label("Settings");
             ui.label(LONG_LABEL);

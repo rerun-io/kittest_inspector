@@ -99,69 +99,122 @@ expression: "query_app(&QueryFilter::default())"
             ]
           },
           {
-            "id": "66935719e9b381fb",
+            "id": "354155f02e0419f8",
             "role": "GenericContainer",
             "children": [
               {
-                "id": "7c1a5b99c794f57a",
+                "id": "85236434a2861251",
                 "role": "GenericContainer",
                 "children": [
                   {
-                    "id": "31a4a2f7fa3c6e3a",
+                    "id": "2aec18abebb3e684",
+                    "role": "Label",
+                    "value": "Chat",
+                    "children": [
+                      {
+                        "id": "864e4c9b1ee72248",
+                        "role": "TextRun",
+                        "value": "Chat"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "50574715c1dcec2f",
+                    "role": "Label",
+                    "value": "where is the volume slider?",
+                    "children": [
+                      {
+                        "id": "cada8298c6e445cc",
+                        "role": "TextRun",
+                        "value": "where is the volume slider?"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "598fde41b126c439",
+                    "role": "Label",
+                    "value": "Second row of the settings panel.",
+                    "children": [
+                      {
+                        "id": "8832fd0259e8847d",
+                        "role": "TextRun",
+                        "value": "Second row of the settings "
+                      },
+                      {
+                        "id": "af9a1d9652ac0702",
+                        "role": "TextRun",
+                        "value": "panel."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "920179beebb0a10c",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "d2e22a518e06cd68",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "ed9ddd035da6670d",
                     "role": "Label",
                     "value": "Settings",
                     "children": [
                       {
-                        "id": "9b6c53a515900780",
+                        "id": "13dbd8e8f9a3a17a",
                         "role": "TextRun",
                         "value": "Settings"
                       }
                     ]
                   },
                   {
-                    "id": "7ec6dbc40f6d8074",
+                    "id": "29da03ef98693066",
                     "role": "Label",
                     "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for.",
                     "children": [
                       {
-                        "id": "fbeca0135f115460",
+                        "id": "16e525a18d8cdce7",
                         "role": "TextRun",
-                        "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, "
+                        "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree "
                       },
                       {
-                        "id": "fbd7db8237c93d1b",
+                        "id": "716e700d21a45292",
                         "role": "TextRun",
-                        "value": "because the text it can read is the only thing telling it what this part of the app is for."
+                        "value": "should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for."
                       }
                     ]
                   },
                   {
-                    "id": "5d158e736a2f8ce4",
+                    "id": "41ef20283b896828",
                     "role": "CheckBox",
                     "label": "Wrap long lines"
                   },
                   {
-                    "id": "6e9a3530eca39e37",
+                    "id": "4b6ee9170c2e59ce",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "928050ff57eef6e",
+                        "id": "96a8f155b766eefb",
                         "role": "Slider",
                         "label": "Volume"
                       },
                       {
-                        "id": "5ef95d77cbf37be1",
+                        "id": "db68ddc08d32ccd1",
                         "role": "SpinButton",
                         "label": "Volume",
                         "value": "42"
                       },
                       {
-                        "id": "8a7752097980b74",
+                        "id": "2389025b21f1c31",
                         "role": "Label",
                         "value": "Volume",
                         "children": [
                           {
-                            "id": "12f94f48729cf573",
+                            "id": "d5cc4c192e7b0b04",
                             "role": "TextRun",
                             "value": "Volume"
                           }
@@ -170,7 +223,7 @@ expression: "query_app(&QueryFilter::default())"
                     ]
                   },
                   {
-                    "id": "3daa3b4a969272c7",
+                    "id": "2d46b7e030d207d8",
                     "role": "GenericContainer",
                     "children": [
                       {
@@ -179,27 +232,27 @@ expression: "query_app(&QueryFilter::default())"
                         "label": "Advanced"
                       },
                       {
-                        "id": "4d1dbc2993b2d5ad",
+                        "id": "6f50df37e0905dd6",
                         "role": "GenericContainer",
                         "children": [
                           {
-                            "id": "68cd4b5e58562b97",
+                            "id": "3026bddbd83be355",
                             "role": "GenericContainer",
                             "children": [
                               {
-                                "id": "409783e453bc9fdc",
+                                "id": "57ecedfc8498d6ff",
                                 "role": "Label",
                                 "value": "Nothing to see here",
                                 "children": [
                                   {
-                                    "id": "cef667d50143b2ca",
+                                    "id": "a7b888df4678ff85",
                                     "role": "TextRun",
                                     "value": "Nothing to see here"
                                   }
                                 ]
                               },
                               {
-                                "id": "47e9c73d55ae1e1c",
+                                "id": "53f88f38e6976025",
                                 "role": "Button",
                                 "label": "Reset",
                                 "disabled": true
