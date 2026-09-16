@@ -185,7 +185,7 @@ Conventions:
       },
       "id": {
         "default": null,
-        "description": "Node id from `query_tree`.",
+        "description": "Node id (hex) from `query_tree`.",
         "type": [
           "string",
           "null"
@@ -304,7 +304,7 @@ Conventions:
           },
           "id": {
             "default": null,
-            "description": "Node id from `query_tree`.",
+            "description": "Node id (hex) from `query_tree`.",
             "type": [
               "string",
               "null"
@@ -381,6 +381,7 @@ Conventions:
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "id": {
+        "description": "Node id, in hex, as returned by `query_tree`.",
         "type": "string"
       }
     },
@@ -413,7 +414,7 @@ Conventions:
             "type": "boolean"
           },
           "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
+            "description": "Node id in hex, used with `click`, `type_text`, and `get_node`.",
             "type": "string"
           },
           "label": {
@@ -528,7 +529,7 @@ Conventions:
       },
       "id": {
         "default": null,
-        "description": "Node id from `query_tree`.",
+        "description": "Node id (hex) from `query_tree`.",
         "type": [
           "string",
           "null"
@@ -728,7 +729,7 @@ Conventions:
             "type": "boolean"
           },
           "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
+            "description": "Node id in hex, used with `click`, `type_text`, and `get_node`.",
             "type": "string"
           },
           "label": {
@@ -894,7 +895,7 @@ Conventions:
       },
       "id": {
         "default": null,
-        "description": "Node id from `query_tree`.",
+        "description": "Node id (hex) from `query_tree`.",
         "type": [
           "string",
           "null"

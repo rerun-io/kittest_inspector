@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NodeView {
-    /// Node id, used with `click`, `type_text`, and `get_node`.
+    /// Node id in hex, used with `click`, `type_text`, and `get_node`.
     pub id: String,
     pub role: String,
     pub label: Option<String>,
@@ -29,7 +29,7 @@ pub struct NodeView {
 /// entry is not necessarily a direct child in the app's tree.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
-    /// Node id, used with `click`, `type_text`, and `get_node`.
+    /// Node id in hex, used with `click`, `type_text`, and `get_node`.
     pub id: String,
     pub role: String,
     pub label: Option<String>,
@@ -276,7 +276,7 @@ fn contains_ci(hay: &str, needle: &str) -> bool {
 
 pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
     NodeView {
-        id: accesskit_id(node).to_string(),
+        id: format_id(accesskit_id(node)),
         role: format!("{:?}", node.role()),
         label: node.label(),
         value: node.value(),
@@ -286,7 +286,7 @@ pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
         focused: node.is_focused_in_tree(),
         disabled: node.is_disabled(),
         hidden: node.is_hidden(),
-        parent_id: node.parent().map(|p| accesskit_id(&p).to_string()),
+        parent_id: node.parent().map(|p| format_id(accesskit_id(&p))),
     }
 }
 
@@ -315,6 +315,18 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
     }
 }
 
+/// Format a node id the way the tools expose it: lower-case hex, no prefix.
+///
+/// Hex keeps the ids short, which matters because a `query_tree` result is mostly ids.
+pub fn format_id(id: u64) -> String {
+    format!("{id:x}")
+}
+
+/// Parse a node id as produced by [`format_id`].
+pub fn parse_id(id: &str) -> Option<u64> {
+    u64::from_str_radix(id.trim(), 16).ok()
+}
+
 /// Project a consumer node to its original `accesskit::NodeId` as a `u64`.
 pub fn accesskit_id(node: &Node<'_>) -> u64 {
     let (local, _tree) = node.locate();
@@ -333,7 +345,7 @@ impl Locator {
     /// Build a locator from raw tool fields: a parseable `id` wins, else the `query` constraints.
     /// Returns `None` when neither an `id` nor any `query` constraint is set.
     pub fn from_fields(id: Option<&str>, query: Query) -> Option<Self> {
-        if let Some(id) = id.and_then(|s| s.trim().parse::<u64>().ok()) {
+        if let Some(id) = id.and_then(parse_id) {
             return Some(Self::Id { id });
         }
         if !query.is_empty() {
@@ -363,7 +375,7 @@ pub fn resolve_unique<'a>(
         Locator::Id { id } => {
             let mut found = Vec::new();
             find_all(&root, &|n| accesskit_id(n) == *id, &mut found);
-            one(found, pixels_per_point, &format!("id `{id}`"))
+            one(found, pixels_per_point, &format!("id `{}`", format_id(*id)))
         }
         Locator::Match { query } => {
             let filter = QueryFilter {
