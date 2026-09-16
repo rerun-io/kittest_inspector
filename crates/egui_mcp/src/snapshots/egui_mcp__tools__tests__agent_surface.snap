@@ -703,7 +703,11 @@ Conventions:
             ]
           },
           "role": {
-            "type": "string"
+            "description": "Omitted for a role of `Unknown`, which carries no information.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "value": {
             "type": [
@@ -714,7 +718,6 @@ Conventions:
         },
         "required": [
           "id",
-          "role",
           "focused",
           "disabled",
           "hidden",

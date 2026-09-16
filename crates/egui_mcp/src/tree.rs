@@ -8,6 +8,10 @@ use accesskit_consumer::{Node, Tree};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// `accesskit::Role::Unknown`, as `{:?}` spells it. What egui reports for a widget that
+/// declares no kind (`WidgetType::Other`), so it tells an agent nothing.
+const UNKNOWN_ROLE: &str = "Unknown";
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NodeView {
     /// Node id in hex, used with `click`, `type_text`, and `get_node`.
@@ -34,7 +38,11 @@ pub struct NodeView {
 pub struct TreeNode {
     /// Node id in hex, used with `click`, `type_text`, and `get_node`.
     pub id: String,
-    pub role: String,
+
+    /// Omitted for a role of `Unknown`, which carries no information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+
     pub label: Option<String>,
     pub value: Option<String>,
     pub focused: bool,
@@ -306,7 +314,7 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
     } = node_view(node, pixels_per_point);
     TreeNode {
         id,
-        role,
+        role: (role != UNKNOWN_ROLE).then_some(role),
         label,
         value,
         focused,
