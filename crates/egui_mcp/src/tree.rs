@@ -447,3 +447,110 @@ fn find_all<'a>(node: &Node<'a>, pred: &impl Fn(&Node<'_>) -> bool, out: &mut Ve
         find_all(&child, pred, out);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use accesskit::{Node as AkNode, NodeId, Role, Tree as AkTree, TreeId, TreeUpdate};
+
+    use super::*;
+
+    /// `root(Window) → [scaffold(Unknown) → [button(Button "OK")], text(Unknown "hi"), noise(Unknown)]`
+    fn test_tree() -> Tree {
+        let mut root = AkNode::new(Role::Window);
+        root.set_children(vec![NodeId(0x2), NodeId(0xff), NodeId(0x4)]);
+        let mut scaffold = AkNode::new(Role::Unknown);
+        scaffold.set_children(vec![NodeId(0x3)]);
+        let mut button = AkNode::new(Role::Button);
+        button.set_label("OK");
+        let mut text = AkNode::new(Role::Unknown);
+        text.set_label("hi");
+        let noise = AkNode::new(Role::Unknown);
+
+        Tree::new(
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(0x1), root),
+                    (NodeId(0x2), scaffold),
+                    (NodeId(0x3), button),
+                    (NodeId(0xff), text),
+                    (NodeId(0x4), noise),
+                ],
+                tree: Some(AkTree::new(NodeId(0x1))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0x1),
+            },
+            false,
+        )
+    }
+
+    fn query_all(filter: &QueryFilter) -> Vec<TreeNode> {
+        query(&test_tree(), filter, 1.0)
+    }
+
+    #[test]
+    fn unfiltered_query_keeps_the_hierarchy_and_drops_scaffolding() {
+        let nodes = query_all(&QueryFilter::default());
+        assert_eq!(nodes.len(), 1, "one root");
+        let root = &nodes[0];
+        assert_eq!(root.id, "1");
+        assert_eq!(root.role.as_deref(), Some("Window"));
+        // `noise` is childless, label-less and role-less, so it's gone; `scaffold` survives
+        // despite being all three, because it still has a child.
+        let ids: Vec<&str> = root.children.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(ids, ["2", "ff"]);
+        assert_eq!(root.children[0].role, None, "`Unknown` is omitted");
+        assert_eq!(root.children[0].children[0].id, "3");
+        assert_eq!(count(&nodes), 4);
+    }
+
+    #[test]
+    fn a_filter_lifts_matches_past_their_unmatched_ancestors() {
+        let nodes = query_all(&QueryFilter {
+            query: Query {
+                role: Some("button".to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].id, "3", "the button, not its scaffold or the root");
+        assert!(nodes[0].children.is_empty());
+    }
+
+    #[test]
+    fn limit_counts_every_node_and_takes_subtrees_with_it() {
+        let nodes = query_all(&QueryFilter {
+            limit: 2,
+            ..Default::default()
+        });
+        // root + `scaffold`, so the button is cut off below the limit.
+        assert_eq!(count(&nodes), 2);
+        assert!(nodes[0].children[0].children.is_empty());
+
+        assert!(
+            query_all(&QueryFilter {
+                limit: 0,
+                ..Default::default()
+            })
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_tree_node_serializes_without_its_empty_fields() {
+        let nodes = query_all(&QueryFilter::default());
+        let json = serde_json::to_value(&nodes[0].children[0]).expect("serialize");
+        let keys: Vec<&str> = json
+            .as_object()
+            .expect("object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            keys,
+            [
+                "children", "disabled", "focused", "hidden", "id", "label", "value"
+            ]
+        );
+    }
+}
