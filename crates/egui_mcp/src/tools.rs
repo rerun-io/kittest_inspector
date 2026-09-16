@@ -613,6 +613,7 @@ impl UiServer {
     /// Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.
     /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
+    /// `exclude` leaves a subtree out — pass a node `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
     /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
     /// `label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its node.
@@ -624,7 +625,14 @@ impl UiServer {
     ) -> Result<Json<QueryTreeResult>, ToolError> {
         let bridge = self.bridge();
         let snap = bridge.fetch_tree().await?;
-        if let Some(role) = &filter.query.role {
+        let roles = [
+            filter.query.role.as_deref(),
+            filter
+                .exclude
+                .as_ref()
+                .and_then(|e| e.query.role.as_deref()),
+        ];
+        for role in roles.into_iter().flatten() {
             tree::validate_role(role, snap.tree.as_ref())?;
         }
         let nodes = match snap.tree {
@@ -837,6 +845,7 @@ impl UiServer {
             query: args.query.clone(),
             visible_only: true,
             limit: args.min_matches as usize,
+            ..Default::default()
         };
         let deadline = tokio::time::Instant::now() + Duration::from_secs(args.timeout_secs);
         let mut start_step = None;

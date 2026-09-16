@@ -205,12 +205,45 @@ impl Query {
     }
 }
 
+/// A subtree to leave out of a query: whatever matches, plus everything below it.
+///
+/// Either a node `id` or the same constraints a [`Query`] takes. An exclusion with neither set
+/// matches nothing, rather than swallowing the whole tree.
+#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
+pub struct Exclusion {
+    /// Id of the node to leave out, from a previous query.
+    #[serde(default)]
+    pub id: Option<String>,
+
+    #[serde(flatten)]
+    pub query: Query,
+}
+
+impl Exclusion {
+    /// Does `node` root a subtree the caller asked to leave out?
+    fn matches(&self, node: &Node<'_>) -> bool {
+        if let Some(id) = self.id.as_deref().and_then(parse_id)
+            && accesskit_id(node) == id
+        {
+            return true;
+        }
+        !self.query.is_empty() && self.query.matches(node)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct QueryFilter {
     #[serde(flatten)]
     pub query: Query,
+
+    /// A subtree to leave out — e.g. the host's own agent panel, whose text would otherwise
+    /// answer every text query before the app under test does.
+    #[serde(default)]
+    pub exclude: Option<Exclusion>,
+
     #[serde(default = "default_true")]
     pub visible_only: bool,
+
     #[serde(default = "default_limit")]
     pub limit: usize,
 }
@@ -227,6 +260,7 @@ impl Default for QueryFilter {
     fn default() -> Self {
         Self {
             query: Query::default(),
+            exclude: None,
             visible_only: true,
             limit: default_limit(),
         }
@@ -243,8 +277,16 @@ pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tr
 
 /// The matches in `node`'s subtree (including `node` itself), nested by ancestry.
 ///
-/// A non-matching node returns its descendants' matches, which its own parent then adopts.
+/// A non-matching node returns its descendants' matches, which its own parent then adopts. An
+/// excluded node returns nothing at all — the exclusion takes its subtree with it.
 fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
+    if filter
+        .exclude
+        .as_ref()
+        .is_some_and(|exclude| exclude.matches(node))
+    {
+        return Vec::new();
+    }
     let children: Vec<TreeNode> = node
         .children()
         .flat_map(|child| walk(&child, filter, pixels_per_point))
@@ -484,6 +526,7 @@ pub fn resolve_unique<'a>(
                 query: query.clone(),
                 visible_only: true,
                 limit: usize::MAX,
+                ..Default::default()
             };
             let mut found = Vec::new();
             find_all(&root, &|n| matches(n, &filter), &mut found);
@@ -596,6 +639,34 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         assert_eq!(nodes[0].id, "3", "the button, not its scaffold or the root");
         assert!(nodes[0].children.is_empty());
+    }
+
+    #[test]
+    fn an_exclusion_drops_the_matching_node_and_everything_under_it() {
+        let nodes = query_all(&QueryFilter {
+            exclude: Some(Exclusion {
+                query: Query {
+                    role: Some("unknown".to_owned()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        // `scaffold` is excluded, so the button below it goes too, though it matches nothing
+        // in the exclusion itself.
+        let ids: Vec<&str> = nodes[0].children.iter().map(|n| n.id.as_str()).collect();
+        assert!(ids.is_empty(), "every child here is `Unknown`: {ids:?}");
+    }
+
+    #[test]
+    fn an_empty_exclusion_excludes_nothing() {
+        let all = query_all(&QueryFilter::default());
+        let with_empty_exclusion = query_all(&QueryFilter {
+            exclude: Some(Exclusion::default()),
+            ..Default::default()
+        });
+        assert_eq!(count(&all), count(&with_empty_exclusion));
     }
 
     #[test]
