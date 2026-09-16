@@ -625,7 +625,7 @@ Conventions:
 
 {
   "name": "query_tree",
-  "description": "Walk the widget tree and return nodes matching the filter.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\nUse the returned `id` with `click`, `type_text`, or `get_node`.",
+  "description": "Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.\nNodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\nUse the returned `id` with `click`, `type_text`, or `get_node`.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
@@ -672,62 +672,6 @@ Conventions:
   },
   "outputSchema": {
     "$defs": {
-      "NodeView": {
-        "properties": {
-          "bounds": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/RectF"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "disabled": {
-            "type": "boolean"
-          },
-          "focused": {
-            "type": "boolean"
-          },
-          "hidden": {
-            "type": "boolean"
-          },
-          "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
-            "type": "string"
-          },
-          "label": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "parent_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "role": {
-            "type": "string"
-          },
-          "value": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "focused",
-          "disabled",
-          "hidden"
-        ],
-        "type": "object"
-      },
       "RectF": {
         "properties": {
           "h": {
@@ -754,13 +698,71 @@ Conventions:
           "h"
         ],
         "type": "object"
+      },
+      "TreeNode": {
+        "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.",
+        "properties": {
+          "bounds": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RectF"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "children": {
+            "items": {
+              "$ref": "#/$defs/TreeNode"
+            },
+            "type": "array"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "focused": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Node id, used with `click`, `type_text`, and `get_node`.",
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "focused",
+          "disabled",
+          "hidden",
+          "children"
+        ],
+        "type": "object"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "nodes": {
         "items": {
-          "$ref": "#/$defs/NodeView"
+          "$ref": "#/$defs/TreeNode"
         },
         "type": "array"
       }

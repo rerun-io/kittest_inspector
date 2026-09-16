@@ -52,7 +52,7 @@ use serde_json::{Value, json};
 use tokio::sync::Mutex;
 
 use crate::bridge::{Bridge, TreeSnapshot};
-use crate::tree::{self, Locator, NodeView, Query, QueryFilter};
+use crate::tree::{self, Locator, NodeView, Query, QueryFilter, TreeNode};
 
 // ---------------------------------------------------------------------------------------
 // UiServer + Server
@@ -513,10 +513,10 @@ pub struct BatchAction {
 // collection/optional results are wrapped in a named field rather than returned bare.
 // ---------------------------------------------------------------------------------------
 
-/// `query_tree` result: the matching nodes.
+/// `query_tree` result: the matching nodes, nested by ancestry.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct QueryTreeResult {
-    pub nodes: Vec<NodeView>,
+    pub nodes: Vec<TreeNode>,
 }
 
 /// `get_node` result: the resolved node, or `null` if the id didn't match.
@@ -609,7 +609,8 @@ impl UiServer {
     // The return type is spelled `Result<Json<…>, ToolError>` rather than the `ToolResult` alias
     // on purpose: `#[tool]` derives the output schema by syntactically matching `Json<T>` /
     // `Result<Json<T>, _>`, and the alias would hide it, silently dropping the schema.
-    /// Walk the widget tree and return nodes matching the filter.
+    /// Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.
+    /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
     #[tool]
@@ -844,11 +845,12 @@ impl UiServer {
             if let Some(role) = &filter.query.role {
                 tree::validate_role(role, snap.tree.as_ref())?;
             }
-            let matches: Vec<NodeView> = match (has_filter, snap.tree) {
+            let matches: Vec<TreeNode> = match (has_filter, snap.tree) {
                 (true, Some(tree)) => tree::query(&tree, &filter, snap.pixels_per_point),
                 _ => Vec::new(),
             };
-            let matched_ok = !has_filter || matches.len() as u32 >= args.min_matches;
+            let num_matches = tree::count(&matches);
+            let matched_ok = !has_filter || num_matches as u32 >= args.min_matches;
             if matched_ok && steps_waited >= args.min_steps {
                 return Ok(CallToolResult::structured(
                     json!({ "ok": true, "matched": matches, "steps_waited": steps_waited }),
@@ -862,7 +864,7 @@ impl UiServer {
                     args.query.role,
                     args.query.label_contains,
                     args.query.value_contains,
-                    matches.len(),
+                    num_matches,
                     args.min_steps,
                     steps_waited,
                 ));

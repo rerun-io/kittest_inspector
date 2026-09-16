@@ -22,6 +22,25 @@ pub struct NodeView {
     pub parent_id: Option<String>,
 }
 
+/// A node in `query_tree`'s hierarchical result.
+///
+/// Only matching nodes appear; each one nests the matches found in its own subtree. A
+/// non-matching node contributes its matches to its nearest matching ancestor, so a `children`
+/// entry is not necessarily a direct child in the app's tree.
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct TreeNode {
+    /// Node id, used with `click`, `type_text`, and `get_node`.
+    pub id: String,
+    pub role: String,
+    pub label: Option<String>,
+    pub value: Option<String>,
+    pub bounds: Option<RectF>,
+    pub focused: bool,
+    pub disabled: bool,
+    pub hidden: bool,
+    pub children: Vec<Self>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, JsonSchema)]
 pub struct RectF {
     pub x: f64,
@@ -157,23 +176,46 @@ impl Default for QueryFilter {
     }
 }
 
-pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<NodeView> {
+pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
     let root = tree.state().root();
-    let mut out = Vec::new();
-    walk(&root, filter, pixels_per_point, &mut out);
-    if out.len() > filter.limit {
-        out.truncate(filter.limit);
-    }
-    out
+    let mut nodes = walk(&root, filter, pixels_per_point);
+    let mut budget = filter.limit;
+    truncate(&mut nodes, &mut budget);
+    nodes
 }
 
-fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32, out: &mut Vec<NodeView>) {
+/// The matches in `node`'s subtree (including `node` itself), nested by ancestry.
+///
+/// A non-matching node returns its descendants' matches, which its own parent then adopts.
+fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
+    let children: Vec<TreeNode> = node
+        .children()
+        .flat_map(|child| walk(&child, filter, pixels_per_point))
+        .collect();
     if matches(node, filter) {
-        out.push(node_view(node, pixels_per_point));
+        vec![tree_node(node, children, pixels_per_point)]
+    } else {
+        children
     }
-    for child in node.children() {
-        walk(&child, filter, pixels_per_point, out);
+}
+
+/// Keep at most `budget` nodes, depth-first; a dropped node takes its subtree with it.
+fn truncate(nodes: &mut Vec<TreeNode>, budget: &mut usize) {
+    let mut kept = 0;
+    for node in nodes.iter_mut() {
+        if *budget == 0 {
+            break;
+        }
+        *budget -= 1;
+        kept += 1;
+        truncate(&mut node.children, budget);
     }
+    nodes.truncate(kept);
+}
+
+/// Total number of nodes in a forest of [`TreeNode`]s.
+pub fn count(nodes: &[TreeNode]) -> usize {
+    nodes.iter().map(|node| 1 + count(&node.children)).sum()
 }
 
 /// Validate a `role` filter string against the full `AccessKit` role set.
@@ -245,6 +287,31 @@ pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
         disabled: node.is_disabled(),
         hidden: node.is_hidden(),
         parent_id: node.parent().map(|p| accesskit_id(&p).to_string()),
+    }
+}
+
+fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) -> TreeNode {
+    let NodeView {
+        id,
+        role,
+        label,
+        value,
+        bounds,
+        focused,
+        disabled,
+        hidden,
+        parent_id: _,
+    } = node_view(node, pixels_per_point);
+    TreeNode {
+        id,
+        role,
+        label,
+        value,
+        bounds,
+        focused,
+        disabled,
+        hidden,
+        children,
     }
 }
 
