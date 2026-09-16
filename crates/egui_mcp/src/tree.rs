@@ -52,8 +52,14 @@ pub struct TreeNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 
+    /// Each flag is omitted when false — that is the state of nearly every node.
+    #[serde(default, skip_serializing_if = "is_false")]
     pub focused: bool,
+
+    #[serde(default, skip_serializing_if = "is_false")]
     pub disabled: bool,
+
+    #[serde(default, skip_serializing_if = "is_false")]
     pub hidden: bool,
 
     /// `default` keeps the derived schema honest: a leaf omits the field entirely.
@@ -70,6 +76,12 @@ impl TreeNode {
             && self.value.is_none()
             && self.role.is_none()
     }
+}
+
+/// For `#[serde(skip_serializing_if)]`.
+#[expect(clippy::trivially_copy_pass_by_ref)]
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Clone, Copy, Serialize, JsonSchema)]
@@ -590,12 +602,12 @@ mod tests {
         let scaffold = &nodes[0].children[0];
         assert_eq!(
             keys(scaffold),
-            ["children", "disabled", "focused", "hidden", "id"],
-            "no label, no value, no role"
+            ["children", "id"],
+            "no label, no value, no role, and every flag false"
         );
         assert_eq!(
             keys(&scaffold.children[0]),
-            ["disabled", "focused", "hidden", "id", "label", "role"],
+            ["id", "label", "role"],
             "a leaf carries no `children`"
         );
     }

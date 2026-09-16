@@ -7,38 +7,24 @@ expression: "pretty(&query_all(&QueryFilter::default()))"
     "id": "1",
     "role": "Window",
     "focused": true,
-    "disabled": false,
-    "hidden": false,
     "children": [
       {
         "id": "2",
-        "focused": false,
-        "disabled": false,
-        "hidden": false,
         "children": [
           {
             "id": "3",
             "role": "Button",
-            "label": "OK",
-            "focused": false,
-            "disabled": false,
-            "hidden": false
+            "label": "OK"
           }
         ]
       },
       {
         "id": "ff",
-        "label": "hi",
-        "focused": false,
-        "disabled": false,
-        "hidden": false
+        "label": "hi"
       },
       {
         "id": "5",
-        "value": "42",
-        "focused": false,
-        "disabled": false,
-        "hidden": false
+        "value": "42"
       }
     ]
   }

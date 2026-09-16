@@ -688,6 +688,7 @@ Conventions:
             "type": "boolean"
           },
           "focused": {
+            "description": "Each flag is omitted when false — that is the state of nearly every node.",
             "type": "boolean"
           },
           "hidden": {
@@ -718,10 +719,7 @@ Conventions:
           }
         },
         "required": [
-          "id",
-          "focused",
-          "disabled",
-          "hidden"
+          "id"
         ],
         "type": "object"
       }

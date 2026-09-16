@@ -6,9 +6,6 @@ expression: "pretty(&query_all(&QueryFilter\n{\n    query: Query { role: Some(\"
   {
     "id": "3",
     "role": "Button",
-    "label": "OK",
-    "focused": false,
-    "disabled": false,
-    "hidden": false
+    "label": "OK"
   }
 ]
