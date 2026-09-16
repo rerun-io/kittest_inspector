@@ -614,7 +614,8 @@ impl UiServer {
     /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
-    /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands) and its parent.
+    /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
+    /// `label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its node.
     /// Empty scaffolding is dropped: a node with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
     #[tool]
     async fn query_tree(
@@ -633,8 +634,8 @@ impl UiServer {
         Ok(Json(QueryTreeResult { nodes }))
     }
 
-    /// Return a single node by id (from `query_tree`), in full detail: its `bounds` in logical points, its `parent_id`, and its state.
-    /// This is the follow-up to `query_tree`, which omits `bounds` to stay compact.
+    /// Return a single node by id (from `query_tree`), in full detail: its `bounds` in logical points, its `parent_id`, its state, and its `label`/`value` untruncated.
+    /// This is the follow-up to `query_tree`, which omits `bounds` and cuts long text short to stay compact.
     // Spelled-out `Result<Json<…>, ToolError>` (not the `ToolResult` alias) so `#[tool]` derives
     // the output schema — see `query_tree`.
     #[tool]
@@ -1031,7 +1032,7 @@ const INSTRUCTIONS: &str = r#"This mcp drives a live egui app: it reads the app'
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
-- `query_tree` returns an abridged tree. For one node's full detail — its `bounds` in logical points, its parent — follow up with `get_node` on that node's `id`.
+- `query_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short with a trailing `…`. For one node in full — `bounds` in logical points, its parent, its whole text — follow up with `get_node` on that node's `id`. Filters always match the full text, so searching for a phrase past the cut still works.
 
 Targeting widgets:
 - Prefer locators — an `id` from `query_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.

@@ -16,6 +16,14 @@ const UNKNOWN_ROLE: &str = "Unknown";
 /// per laid-out line, repeating text the widget above already carries.
 const TEXT_RUN_ROLE: &str = "TextRun";
 
+/// How much of a widget's `label`/`value` [`TreeNode`] carries before cutting it short.
+///
+/// A widget's text is unbounded — a text editor's contents, a log line, a chat message — and
+/// egui exports even the scrolled-out parts of a `ScrollArea`, so a whole-tree query can hand
+/// back far more text than an agent needs to find its way around. Filters still match the full
+/// text, and `get_node` still returns it.
+const MAX_TEXT_CHARS: usize = 100;
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NodeView {
     /// Node id, used with `click`, `type_text`, and `get_node`.
@@ -41,6 +49,8 @@ pub struct NodeView {
 ///
 /// A node that says nothing — no children, no `label`, no `value` and no role — is dropped
 /// entirely, as is a `TextRun` that only repeats its parent's text.
+///
+/// `label` and `value` are cut short at [`MAX_TEXT_CHARS`], marked with a trailing `…`.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
     /// Node id, used with `click`, `type_text`, and `get_node`.
@@ -253,6 +263,17 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tre
     }
 }
 
+/// Cut `text` short at [`MAX_TEXT_CHARS`], marking the cut with a trailing `…`.
+///
+/// Counted in characters, not bytes, so the cut lands on a character boundary.
+fn shorten(text: String) -> String {
+    if text.chars().count() <= MAX_TEXT_CHARS {
+        return text;
+    }
+    let kept: String = text.chars().take(MAX_TEXT_CHARS).collect();
+    format!("{kept}…")
+}
+
 /// Drop the `TextRun` children whose text `parent` already carries.
 ///
 /// egui lays a string out as one `TextRun` per line under the widget that owns it, so the text
@@ -271,10 +292,11 @@ fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<TreeNode>) -> Vec<Tree
         .filter(|child| {
             let is_echo = child.role.as_deref() == Some(TEXT_RUN_ROLE)
                 && child.children.is_empty()
-                && child
-                    .value
-                    .as_deref()
-                    .is_some_and(|text| owned_text.contains(text));
+                && child.value.as_deref().is_some_and(|text| {
+                    // The run's own text may have been cut short, so compare the part of it
+                    // that survived.
+                    owned_text.contains(text.trim_end_matches('…'))
+                });
             !is_echo
         })
         .collect()
@@ -386,8 +408,8 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
     TreeNode {
         id,
         role: (role != UNKNOWN_ROLE).then_some(role),
-        label,
-        value,
+        label: label.map(shorten),
+        value: value.map(shorten),
         focused,
         disabled,
         hidden,

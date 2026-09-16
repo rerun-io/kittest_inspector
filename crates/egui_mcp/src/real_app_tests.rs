@@ -179,30 +179,15 @@ fn one_widget_by_its_text() {
     }));
 }
 
-/// A wrapped label reaches the agent whole and exactly once: egui lays it out as one `TextRun`
-/// per line, but the `Label` above them carries the entire string, so the runs are folded away.
+/// A long label is cut short, but stays findable: the filters match the whole text, so a phrase
+/// from past the cut still resolves to the node that holds it.
 #[test]
-fn a_long_label_arrives_whole() {
-    fn find<'a>(nodes: &'a [TreeNode], value: &str) -> Option<&'a TreeNode> {
-        nodes.iter().find_map(|node| {
-            (node.value.as_deref() == Some(value))
-                .then_some(node)
-                .or_else(|| find(&node.children, value))
-        })
-    }
-
-    let whole_tree = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
-    let label = find(&whole_tree, LONG_LABEL).expect("the long label is in the tree, in full");
-    assert!(
-        label.children.is_empty(),
-        "the per-line runs repeat the label, so they are folded into it"
-    );
-
-    // And a phrase from the middle of it finds that same label, not just the run it landed in.
+fn a_long_label_is_cut_short_but_still_matchable() {
     let matched = query(
         &demo_app_tree(),
         &QueryFilter {
             query: Query {
+                // Deep into the paragraph, well past where the text is cut.
                 content_contains: Some("every word of it".to_owned()),
                 ..Default::default()
             },
@@ -210,9 +195,17 @@ fn a_long_label_arrives_whole() {
         },
         1.0,
     );
-    assert_eq!(
-        matched.first().and_then(|node| node.value.as_deref()),
-        Some(LONG_LABEL)
+    let label = matched.first().expect("the long label matched");
+    let text = label.value.as_deref().expect("a label's text is its value");
+    assert!(
+        LONG_LABEL.starts_with(text.trim_end_matches('…')),
+        "what came back is the start of the label: {text}"
+    );
+    assert!(text.ends_with('…'), "and it is marked as cut: {text}");
+    assert!(text.chars().count() < LONG_LABEL.chars().count());
+    assert!(
+        label.children.is_empty(),
+        "the per-line runs repeat the label, so they are folded into it"
     );
 }
 
