@@ -27,26 +27,12 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                       {
                         "id": "5fdb4d6fcd23c05e",
                         "role": "Label",
-                        "value": "Search",
-                        "children": [
-                          {
-                            "id": "55b7f16f419afcfb",
-                            "role": "TextRun",
-                            "value": "Search"
-                          }
-                        ]
+                        "value": "Search"
                       },
                       {
                         "id": "6f3fbf6586d5df4d",
                         "role": "TextInput",
-                        "value": "tree",
-                        "children": [
-                          {
-                            "id": "209a165af4860f05",
-                            "role": "TextRun",
-                            "value": "tree"
-                          }
-                        ]
+                        "value": "tree"
                       },
                       {
                         "id": "44da3610c66a7249",
@@ -70,14 +56,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                   {
                     "id": "4ba251cd36818ac6",
                     "role": "Label",
-                    "value": "Projects",
-                    "children": [
-                      {
-                        "id": "819f43a8957f3f41",
-                        "role": "TextRun",
-                        "value": "Projects"
-                      }
-                    ]
+                    "value": "Projects"
                   },
                   {
                     "id": "47c33c87d70251d9",
@@ -109,43 +88,17 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                   {
                     "id": "2aec18abebb3e684",
                     "role": "Label",
-                    "value": "Chat",
-                    "children": [
-                      {
-                        "id": "864e4c9b1ee72248",
-                        "role": "TextRun",
-                        "value": "Chat"
-                      }
-                    ]
+                    "value": "Chat"
                   },
                   {
                     "id": "50574715c1dcec2f",
                     "role": "Label",
-                    "value": "where is the volume slider?",
-                    "children": [
-                      {
-                        "id": "cada8298c6e445cc",
-                        "role": "TextRun",
-                        "value": "where is the volume slider?"
-                      }
-                    ]
+                    "value": "where is the volume slider?"
                   },
                   {
                     "id": "598fde41b126c439",
                     "role": "Label",
-                    "value": "Second row of the settings panel.",
-                    "children": [
-                      {
-                        "id": "8832fd0259e8847d",
-                        "role": "TextRun",
-                        "value": "Second row of the settings "
-                      },
-                      {
-                        "id": "af9a1d9652ac0702",
-                        "role": "TextRun",
-                        "value": "panel."
-                      }
-                    ]
+                    "value": "Second row of the settings panel."
                   }
                 ]
               }
@@ -162,31 +115,12 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                   {
                     "id": "ed9ddd035da6670d",
                     "role": "Label",
-                    "value": "Settings",
-                    "children": [
-                      {
-                        "id": "13dbd8e8f9a3a17a",
-                        "role": "TextRun",
-                        "value": "Settings"
-                      }
-                    ]
+                    "value": "Settings"
                   },
                   {
                     "id": "29da03ef98693066",
                     "role": "Label",
-                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for.",
-                    "children": [
-                      {
-                        "id": "16e525a18d8cdce7",
-                        "role": "TextRun",
-                        "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree "
-                      },
-                      {
-                        "id": "716e700d21a45292",
-                        "role": "TextRun",
-                        "value": "should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for."
-                      }
-                    ]
+                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for."
                   },
                   {
                     "id": "41ef20283b896828",
@@ -211,14 +145,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                       {
                         "id": "2389025b21f1c31",
                         "role": "Label",
-                        "value": "Volume",
-                        "children": [
-                          {
-                            "id": "d5cc4c192e7b0b04",
-                            "role": "TextRun",
-                            "value": "Volume"
-                          }
-                        ]
+                        "value": "Volume"
                       }
                     ]
                   },
@@ -242,14 +169,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                               {
                                 "id": "57ecedfc8498d6ff",
                                 "role": "Label",
-                                "value": "Nothing to see here",
-                                "children": [
-                                  {
-                                    "id": "a7b888df4678ff85",
-                                    "role": "TextRun",
-                                    "value": "Nothing to see here"
-                                  }
-                                ]
+                                "value": "Nothing to see here"
                               },
                               {
                                 "id": "53f88f38e6976025",
