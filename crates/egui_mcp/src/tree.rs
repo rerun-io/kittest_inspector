@@ -739,6 +739,72 @@ mod tests {
         assert_eq!(count(&all), count(&with_empty_exclusion));
     }
 
+    /// Two chains of the same depth under one root, to watch a `limit` spread across both
+    /// rather than drain the first: `root → a0 → a1 → a2` and `root → b0 → b1 → b2`.
+    fn deep_tree() -> Tree {
+        let mut nodes = Vec::new();
+        let mut root = AkNode::new(Role::Window);
+        root.set_children(vec![NodeId(0xa0), NodeId(0xb0)]);
+        nodes.push((NodeId(0x1), root));
+
+        for (branch, base) in [("a", 0xa0), ("b", 0xb0)] {
+            for depth in 0..3u64 {
+                let id = base + depth;
+                let mut node = AkNode::new(Role::Label);
+                node.set_label(format!("{branch}{depth}"));
+                if depth < 2 {
+                    node.set_children(vec![NodeId(id + 1)]);
+                }
+                nodes.push((NodeId(id), node));
+            }
+        }
+
+        Tree::new(
+            TreeUpdate {
+                nodes,
+                tree: Some(AkTree::new(NodeId(0x1))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0x1),
+            },
+            false,
+        )
+    }
+
+    #[test]
+    fn a_limit_spreads_across_branches_instead_of_draining_one() {
+        // Levels 0..=2 are 1 + 2 + 2 = 5 nodes, so they all fit; level 3 does not.
+        let nodes = query(
+            &deep_tree(),
+            &QueryFilter {
+                limit: 5,
+                ..Default::default()
+            },
+            1.0,
+        );
+        assert_eq!(count(&nodes), 5);
+
+        let labels = |nodes: &[Widget]| -> Vec<String> {
+            nodes.iter().filter_map(|node| node.label.clone()).collect()
+        };
+        let top = labels(&nodes[0].children);
+        assert_eq!(
+            top,
+            ["a0", "b0"],
+            "both branches, not one branch twice as deep"
+        );
+        for branch in &nodes[0].children {
+            assert_eq!(
+                labels(&branch.children).len(),
+                1,
+                "one level deeper, in both"
+            );
+            assert_eq!(
+                branch.children[0].omitted_children, 1,
+                "and each says what it is hiding"
+            );
+        }
+    }
+
     #[test]
     fn limit_keeps_whole_levels_and_says_what_it_dropped() {
         // The roots (1) fit, the level below (4) doesn't, so the root is kept whole and the one
