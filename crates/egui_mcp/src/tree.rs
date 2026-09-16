@@ -54,10 +54,13 @@ pub struct TreeNode {
 }
 
 impl TreeNode {
-    /// A childless node with neither a `label` nor a role says nothing an agent can act on or
-    /// read — it is layout scaffolding that survived the filter. `query_tree` drops it.
+    /// A childless node with no `label`, no `value` and no role says nothing an agent can act
+    /// on or read — it is layout scaffolding that survived the filter. `query_tree` drops it.
     fn is_noise(&self) -> bool {
-        self.children.is_empty() && self.label.is_none() && self.role.is_none()
+        self.children.is_empty()
+            && self.label.is_none()
+            && self.value.is_none()
+            && self.role.is_none()
     }
 }
 
@@ -454,16 +457,19 @@ mod tests {
 
     use super::*;
 
-    /// `root(Window) → [scaffold(Unknown) → [button(Button "OK")], text(Unknown "hi"), noise(Unknown)]`
+    /// `root(Window) → [scaffold(Unknown) → [button(Button "OK")], text(Unknown "hi"),
+    /// valued(Unknown, value "42"), noise(Unknown)]`
     fn test_tree() -> Tree {
         let mut root = AkNode::new(Role::Window);
-        root.set_children(vec![NodeId(0x2), NodeId(0xff), NodeId(0x4)]);
+        root.set_children(vec![NodeId(0x2), NodeId(0xff), NodeId(0x5), NodeId(0x4)]);
         let mut scaffold = AkNode::new(Role::Unknown);
         scaffold.set_children(vec![NodeId(0x3)]);
         let mut button = AkNode::new(Role::Button);
         button.set_label("OK");
         let mut text = AkNode::new(Role::Unknown);
         text.set_label("hi");
+        let mut valued = AkNode::new(Role::Unknown);
+        valued.set_value("42");
         let noise = AkNode::new(Role::Unknown);
 
         Tree::new(
@@ -473,6 +479,7 @@ mod tests {
                     (NodeId(0x2), scaffold),
                     (NodeId(0x3), button),
                     (NodeId(0xff), text),
+                    (NodeId(0x5), valued),
                     (NodeId(0x4), noise),
                 ],
                 tree: Some(AkTree::new(NodeId(0x1))),
@@ -497,10 +504,10 @@ mod tests {
         // `noise` is childless, label-less and role-less, so it's gone; `scaffold` survives
         // despite being all three, because it still has a child.
         let ids: Vec<&str> = root.children.iter().map(|n| n.id.as_str()).collect();
-        assert_eq!(ids, ["2", "ff"]);
+        assert_eq!(ids, ["2", "ff", "5"], "`valued` is kept for its text alone");
         assert_eq!(root.children[0].role, None, "`Unknown` is omitted");
         assert_eq!(root.children[0].children[0].id, "3");
-        assert_eq!(count(&nodes), 4);
+        assert_eq!(count(&nodes), 5);
     }
 
     #[test]
