@@ -613,7 +613,8 @@ impl UiServer {
     /// Walk the app's widget tree and return the widgets matching the filter, nested by ancestry: each one carries the matches from its own subtree in `children`.
     /// Widgets in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
-    /// `limit` (200 by default) caps how many widgets come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any widget whose children were cut reports how many in `omitted_children` — query that widget's `id` to see them.
+    /// `limit` (200 by default) caps how many widgets come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any widget whose children were cut reports how many in `omitted_children`.
+    /// `root` starts the walk at one widget instead of the app's root — pass the `id` of a widget that reported `omitted_children` to see that part of the tree in full.
     /// `exclude` leaves a subtree out — pass a widget `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
     /// Use the returned `id` with `click`, `type_text`, or `get_widget`.
     /// The widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
@@ -637,7 +638,7 @@ impl UiServer {
             tree::validate_role(role, snap.tree.as_ref())?;
         }
         let nodes = match snap.tree {
-            Some(tree) => tree::query(&tree, &filter, snap.pixels_per_point),
+            Some(tree) => tree::query(&tree, &filter, snap.pixels_per_point)?,
             None => Vec::new(),
         };
         Ok(Json(WidgetTreeResult { nodes }))
@@ -862,7 +863,7 @@ impl UiServer {
                 tree::validate_role(role, snap.tree.as_ref())?;
             }
             let matches: Vec<Widget> = match (has_filter, snap.tree) {
-                (true, Some(tree)) => tree::query(&tree, &filter, snap.pixels_per_point),
+                (true, Some(tree)) => tree::query(&tree, &filter, snap.pixels_per_point)?,
                 _ => Vec::new(),
             };
             let num_matches = tree::count(&matches);
@@ -1042,6 +1043,7 @@ const INSTRUCTIONS: &str = r#"This mcp drives a live egui app: it reads the app'
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
 - Start most tasks with `widget_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
+- When a widget reports `omitted_children`, query `widget_tree` again with that widget's `id` as `root` to walk just that part of the app.
 - `widget_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short. A trailing ` […]` in a `label` or `value` means exactly that — the text goes on, and `get_widget` on that widget's `id` returns all of it, along with its `bounds` in logical points and its parent. Filters always match the full text, so searching for a phrase from past the cut still finds the widget.
 
 Targeting widgets:

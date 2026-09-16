@@ -85,8 +85,8 @@ pub struct Widget {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Self>,
 
-    /// How many of this widget's children `limit` left out. Raise `limit`, narrow the filter,
-    /// or query this widget's `id` to see them.
+    /// How many of this widget's children `limit` left out. Query again with this widget's
+    /// `id` as `root` to see them, or raise `limit`, or narrow the filter.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub omitted_children: usize,
 }
@@ -252,6 +252,11 @@ pub struct QueryFilter {
     #[serde(flatten)]
     pub query: Query,
 
+    /// Walk this widget's subtree instead of the whole app — the way to see the children a
+    /// `limit` left out, by passing the id of the widget that reported `omitted_children`.
+    #[serde(default)]
+    pub root: Option<String>,
+
     /// A subtree to leave out — e.g. the host's own agent panel, whose text would otherwise
     /// answer every text query before the app under test does.
     #[serde(default)]
@@ -276,6 +281,7 @@ impl Default for QueryFilter {
     fn default() -> Self {
         Self {
             query: Query::default(),
+            root: None,
             exclude: None,
             visible_only: true,
             limit: default_limit(),
@@ -283,11 +289,25 @@ impl Default for QueryFilter {
     }
 }
 
-pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Widget> {
-    let root = tree.state().root();
+/// Walk `tree`, returning the widgets that match `filter`, nested by ancestry.
+///
+/// # Errors
+/// If `filter.root` names a widget the tree doesn't have.
+pub fn query(
+    tree: &Tree,
+    filter: &QueryFilter,
+    pixels_per_point: f32,
+) -> Result<Vec<Widget>, String> {
+    let root = match &filter.root {
+        Some(id) => {
+            let id = parse_id(id).ok_or_else(|| format!("invalid `root` id `{id}`"))?;
+            resolve_unique(tree, &Locator::Id { id }, pixels_per_point)?
+        }
+        None => tree.state().root(),
+    };
     let mut nodes = walk(&root, filter, pixels_per_point);
     truncate(&mut nodes, filter.limit);
-    nodes
+    Ok(nodes)
 }
 
 /// The matches in `node`'s subtree (including `node` itself), nested by ancestry.
@@ -678,7 +698,7 @@ mod tests {
     }
 
     fn query_all(filter: &QueryFilter) -> Vec<Widget> {
-        query(&test_tree(), filter, 1.0)
+        query(&test_tree(), filter, 1.0).expect("the filter names no missing `root`")
     }
 
     #[test]
@@ -727,6 +747,29 @@ mod tests {
         // in the exclusion itself.
         let ids: Vec<&str> = nodes[0].children.iter().map(|n| n.id.as_str()).collect();
         assert!(ids.is_empty(), "every child here is `Unknown`: {ids:?}");
+    }
+
+    #[test]
+    fn a_root_walks_one_subtree_and_a_missing_one_is_an_error() {
+        let nodes = query_all(&QueryFilter {
+            // `scaffold`, whose only child is the button.
+            root: Some("2".to_owned()),
+            ..Default::default()
+        });
+        assert_eq!(count(&nodes), 2, "the subtree, not the app");
+        assert_eq!(nodes[0].id, "2");
+        assert_eq!(nodes[0].children[0].label.as_deref(), Some("OK"));
+
+        let err = query(
+            &test_tree(),
+            &QueryFilter {
+                root: Some("dead".to_owned()),
+                ..Default::default()
+            },
+            1.0,
+        )
+        .expect_err("no widget has that id");
+        assert!(err.contains("dead"), "{err}");
     }
 
     #[test]
@@ -780,7 +823,8 @@ mod tests {
                 ..Default::default()
             },
             1.0,
-        );
+        )
+        .expect("no `root` to miss");
         assert_eq!(count(&nodes), 5);
 
         let labels = |nodes: &[Widget]| -> Vec<String> {
