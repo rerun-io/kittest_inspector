@@ -120,31 +120,48 @@ expression: "query_app(&QueryFilter::default())"
                   },
                   {
                     "id": "7ec6dbc40f6d8074",
+                    "role": "Label",
+                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for.",
+                    "children": [
+                      {
+                        "id": "fbeca0135f115460",
+                        "role": "TextRun",
+                        "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, "
+                      },
+                      {
+                        "id": "fbd7db8237c93d1b",
+                        "role": "TextRun",
+                        "value": "because the text it can read is the only thing telling it what this part of the app is for."
+                      }
+                    ]
+                  },
+                  {
+                    "id": "5d158e736a2f8ce4",
                     "role": "CheckBox",
                     "label": "Wrap long lines"
                   },
                   {
-                    "id": "440527ba7f608ae9",
+                    "id": "6e9a3530eca39e37",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "6cb3627bb6bfc321",
+                        "id": "928050ff57eef6e",
                         "role": "Slider",
                         "label": "Volume"
                       },
                       {
-                        "id": "f27478cae1e1e938",
+                        "id": "5ef95d77cbf37be1",
                         "role": "SpinButton",
                         "label": "Volume",
                         "value": "42"
                       },
                       {
-                        "id": "a8ae8fe411b300a1",
+                        "id": "8a7752097980b74",
                         "role": "Label",
                         "value": "Volume",
                         "children": [
                           {
-                            "id": "fbf81660662904e0",
+                            "id": "12f94f48729cf573",
                             "role": "TextRun",
                             "value": "Volume"
                           }
@@ -153,7 +170,7 @@ expression: "query_app(&QueryFilter::default())"
                     ]
                   },
                   {
-                    "id": "6e9a3530eca39e37",
+                    "id": "3daa3b4a969272c7",
                     "role": "GenericContainer",
                     "children": [
                       {
@@ -162,27 +179,27 @@ expression: "query_app(&QueryFilter::default())"
                         "label": "Advanced"
                       },
                       {
-                        "id": "cf0243e687c4d4fb",
+                        "id": "4d1dbc2993b2d5ad",
                         "role": "GenericContainer",
                         "children": [
                           {
-                            "id": "8654f8a58c39d59b",
+                            "id": "68cd4b5e58562b97",
                             "role": "GenericContainer",
                             "children": [
                               {
-                                "id": "d352649252596037",
+                                "id": "409783e453bc9fdc",
                                 "role": "Label",
                                 "value": "Nothing to see here",
                                 "children": [
                                   {
-                                    "id": "1589b5936a39ba19",
+                                    "id": "cef667d50143b2ca",
                                     "role": "TextRun",
                                     "value": "Nothing to see here"
                                   }
                                 ]
                               },
                               {
-                                "id": "e2a6df5857d2103a",
+                                "id": "47e9c73d55ae1e1c",
                                 "role": "Button",
                                 "label": "Reset",
                                 "disabled": true

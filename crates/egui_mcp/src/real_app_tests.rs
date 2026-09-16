@@ -18,6 +18,10 @@ use crate::tree::{Query, QueryFilter, TreeNode, query};
 /// would otherwise show up as a `hidden` flag that differs between platforms.
 const SCREEN_SIZE: egui::Vec2 = egui::vec2(1280.0, 900.0);
 
+/// A label long enough to wrap over several lines, to show whether an agent is handed the whole
+/// text or only what fits.
+const LONG_LABEL: &str = "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame has to lay it out as more than one run of text. An agent reading the tree should still get every word of it, because the text it can read is the only thing telling it what this part of the app is for.";
+
 /// The demo app's mutable state, so its widgets report real values rather than defaults.
 struct DemoApp {
     search: String,
@@ -56,6 +60,7 @@ impl DemoApp {
 
         egui::CentralPanel::default().show(ui, |ui| {
             ui.label("Settings");
+            ui.label(LONG_LABEL);
             ui.checkbox(&mut self.wrap_lines, "Wrap long lines");
             ui.add(egui::Slider::new(&mut self.volume, 0.0..=100.0).text("Volume"));
             egui::CollapsingHeader::new("Advanced")
@@ -131,6 +136,43 @@ fn one_widget_by_its_text() {
         },
         ..Default::default()
     }));
+}
+
+/// A wrapped label reaches the agent whole: egui splits it into one `TextRun` per line, but the
+/// `Label` above them still carries the entire string, so nothing is truncated on the way out.
+#[test]
+fn a_long_label_arrives_whole() {
+    fn find<'a>(nodes: &'a [TreeNode], value: &str) -> Option<&'a TreeNode> {
+        nodes.iter().find_map(|node| {
+            (node.value.as_deref() == Some(value))
+                .then_some(node)
+                .or_else(|| find(&node.children, value))
+        })
+    }
+
+    let whole_tree = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
+    let label = find(&whole_tree, LONG_LABEL).expect("the long label is in the tree, in full");
+    assert!(
+        label.children.len() > 1,
+        "the text wrapped, so it arrives as several runs below the label"
+    );
+
+    // And a phrase from the middle of it finds that same label, not just the run it landed in.
+    let matched = query(
+        &demo_app_tree(),
+        &QueryFilter {
+            query: Query {
+                content_contains: Some("every word of it".to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        1.0,
+    );
+    assert_eq!(
+        matched.first().and_then(|node| node.value.as_deref()),
+        Some(LONG_LABEL)
+    );
 }
 
 /// Nothing an agent can act on should reach it without an `id` to act on it with, and the
