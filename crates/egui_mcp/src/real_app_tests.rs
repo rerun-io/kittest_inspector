@@ -209,6 +209,16 @@ fn a_long_label_is_cut_short_but_still_matchable() {
     );
 }
 
+/// A tight `limit` keeps the top of the app — the panels and rows an agent navigates by — and
+/// says how many children each cut node lost.
+#[test]
+fn a_tight_limit_keeps_the_top_of_the_tree() {
+    insta::assert_snapshot!(query_app(&QueryFilter {
+        limit: 12,
+        ..Default::default()
+    }));
+}
+
 /// An exclusion takes a whole subtree with it: the chat panel's own text no longer answers a
 /// query meant for the app.
 #[test]

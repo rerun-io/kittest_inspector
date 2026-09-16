@@ -79,6 +79,11 @@ pub struct TreeNode {
     /// `default` keeps the derived schema honest: a leaf omits the field entirely.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Self>,
+
+    /// How many of this node's children `limit` left out. Raise `limit`, narrow the filter, or
+    /// query this node's `id` to see them.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_children: usize,
 }
 
 impl TreeNode {
@@ -96,6 +101,12 @@ impl TreeNode {
 #[expect(clippy::trivially_copy_pass_by_ref)]
 fn is_false(b: &bool) -> bool {
     !*b
+}
+
+/// For `#[serde(skip_serializing_if)]`.
+#[expect(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, Copy, Serialize, JsonSchema)]
@@ -270,8 +281,7 @@ impl Default for QueryFilter {
 pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
     let root = tree.state().root();
     let mut nodes = walk(&root, filter, pixels_per_point);
-    let mut budget = filter.limit;
-    truncate(&mut nodes, &mut budget);
+    truncate(&mut nodes, filter.limit);
     nodes
 }
 
@@ -344,18 +354,71 @@ fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<TreeNode>) -> Vec<Tree
         .collect()
 }
 
-/// Keep at most `budget` nodes, depth-first; a dropped node takes its subtree with it.
-fn truncate(nodes: &mut Vec<TreeNode>, budget: &mut usize) {
-    let mut kept = 0;
-    for node in nodes.iter_mut() {
-        if *budget == 0 {
-            break;
+/// Cut the forest down to `budget` nodes, from the bottom up.
+///
+/// Every level that fits whole is kept whole, so an agent always gets the top of the app's
+/// hierarchy — the panels and sections it navigates by — and loses the leaves first. What is
+/// left of the budget after the last full level is spent on the level below it, in order.
+///
+/// A node whose children were cut records how many in `omitted_children`, so the agent can see
+/// that there is more and ask for it by that node's `id`.
+fn truncate(nodes: &mut Vec<TreeNode>, budget: usize) {
+    let full_depth = (0..height(nodes)).rfind(|&depth| count_within(nodes, depth) <= budget);
+
+    let Some(full_depth) = full_depth else {
+        // Not even the roots fit. There is no parent to record the loss on, so this is the one
+        // cut an agent can't see; `limit` would have to be pathologically small.
+        nodes.truncate(budget);
+        for node in nodes.iter_mut() {
+            node.omitted_children = node.children.len();
+            node.children.clear();
         }
-        *budget -= 1;
-        kept += 1;
-        truncate(&mut node.children, budget);
+        return;
+    };
+
+    let mut extra = budget - count_within(nodes, full_depth);
+    prune(nodes, full_depth, &mut extra);
+}
+
+/// Depth of the deepest node in the forest, counting a forest of leaves as 1.
+fn height(nodes: &[TreeNode]) -> usize {
+    nodes
+        .iter()
+        .map(|node| 1 + height(&node.children))
+        .max()
+        .unwrap_or(0)
+}
+
+/// How many nodes there are down to and including `depth` (`0` is the roots).
+fn count_within(nodes: &[TreeNode], depth: usize) -> usize {
+    nodes
+        .iter()
+        .map(|node| {
+            if depth == 0 {
+                1
+            } else {
+                1 + count_within(&node.children, depth - 1)
+            }
+        })
+        .sum()
+}
+
+/// Keep every node down to `depth_left`, then spend `extra` on the level below it.
+fn prune(nodes: &mut [TreeNode], depth_left: usize, extra: &mut usize) {
+    for node in nodes {
+        if 0 < depth_left {
+            prune(&mut node.children, depth_left - 1, extra);
+            continue;
+        }
+        let kept = node.children.len().min(*extra);
+        *extra -= kept;
+        node.omitted_children = node.children.len() - kept;
+        node.children.truncate(kept);
+        for child in &mut node.children {
+            child.omitted_children = child.children.len();
+            child.children.clear();
+        }
     }
-    nodes.truncate(kept);
 }
 
 /// Total number of nodes in a forest of [`TreeNode`]s.
@@ -456,6 +519,7 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
         disabled,
         hidden,
         children,
+        omitted_children: 0,
     }
 }
 
@@ -670,14 +734,25 @@ mod tests {
     }
 
     #[test]
-    fn limit_counts_every_node_and_takes_subtrees_with_it() {
+    fn limit_keeps_whole_levels_and_says_what_it_dropped() {
+        // The roots (1) fit, the level below (4) doesn't, so the root is kept whole and the one
+        // node the budget has left goes to its first child.
         let nodes = query_all(&QueryFilter {
             limit: 2,
             ..Default::default()
         });
-        // root + `scaffold`, so the button is cut off below the limit.
         assert_eq!(count(&nodes), 2);
-        assert!(nodes[0].children[0].children.is_empty());
+        assert_eq!(nodes[0].children.len(), 1);
+        assert_eq!(nodes[0].omitted_children, 2, "`ff` and `5` were left out");
+        assert_eq!(
+            nodes[0].children[0].omitted_children, 1,
+            "and the button below the kept child"
+        );
+
+        // A budget that fits every level leaves the tree alone.
+        let whole = query_all(&QueryFilter::default());
+        assert_eq!(count(&whole), 5);
+        assert!(whole.iter().all(|node| node.omitted_children == 0));
 
         assert!(
             query_all(&QueryFilter {
