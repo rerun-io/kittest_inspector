@@ -179,8 +179,8 @@ fn one_widget_by_its_text() {
     }));
 }
 
-/// A wrapped label reaches the agent whole: egui splits it into one `TextRun` per line, but the
-/// `Label` above them still carries the entire string, so nothing is truncated on the way out.
+/// A wrapped label reaches the agent whole and exactly once: egui lays it out as one `TextRun`
+/// per line, but the `Label` above them carries the entire string, so the runs are folded away.
 #[test]
 fn a_long_label_arrives_whole() {
     fn find<'a>(nodes: &'a [TreeNode], value: &str) -> Option<&'a TreeNode> {
@@ -194,8 +194,8 @@ fn a_long_label_arrives_whole() {
     let whole_tree = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
     let label = find(&whole_tree, LONG_LABEL).expect("the long label is in the tree, in full");
     assert!(
-        label.children.len() > 1,
-        "the text wrapped, so it arrives as several runs below the label"
+        label.children.is_empty(),
+        "the per-line runs repeat the label, so they are folded into it"
     );
 
     // And a phrase from the middle of it finds that same label, not just the run it landed in.

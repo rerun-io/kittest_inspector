@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 /// declares no kind (`WidgetType::Other`), so it tells an agent nothing.
 const UNKNOWN_ROLE: &str = "Unknown";
 
+/// `accesskit::Role::TextRun`, as `{:?}` spells it. egui puts one under every text widget, one
+/// per laid-out line, repeating text the widget above already carries.
+const TEXT_RUN_ROLE: &str = "TextRun";
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct NodeView {
     /// Node id, used with `click`, `type_text`, and `get_node`.
@@ -36,7 +40,7 @@ pub struct NodeView {
 /// agent to read past, and actions take an `id` anyway. `get_node` has the full detail.
 ///
 /// A node that says nothing — no children, no `label`, no `value` and no role — is dropped
-/// entirely.
+/// entirely, as is a `TextRun` that only repeats its parent's text.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
     /// Node id, used with `click`, `type_text`, and `get_node`.
@@ -236,6 +240,7 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tre
         .flat_map(|child| walk(&child, filter, pixels_per_point))
         .collect();
     if matches(node, filter) {
+        let children = drop_echoed_text_runs(node, children);
         let view = tree_node(node, children, pixels_per_point);
         // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn.
         if view.is_noise() {
@@ -246,6 +251,33 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tre
     } else {
         children
     }
+}
+
+/// Drop the `TextRun` children whose text `parent` already carries.
+///
+/// egui lays a string out as one `TextRun` per line under the widget that owns it, so the text
+/// comes back twice — and a wrapped paragraph comes back once per line on top of that. A run is
+/// not a widget an agent can act on: actions target the parent, which still holds the whole
+/// string. A run whose text the parent *doesn't* carry is left alone, since dropping it would
+/// lose the only copy.
+fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<TreeNode>) -> Vec<TreeNode> {
+    let owned_text = format!(
+        "{} {}",
+        parent.label().unwrap_or_default(),
+        parent.value().unwrap_or_default()
+    );
+    children
+        .into_iter()
+        .filter(|child| {
+            let is_echo = child.role.as_deref() == Some(TEXT_RUN_ROLE)
+                && child.children.is_empty()
+                && child
+                    .value
+                    .as_deref()
+                    .is_some_and(|text| owned_text.contains(text));
+            !is_echo
+        })
+        .collect()
 }
 
 /// Keep at most `budget` nodes, depth-first; a dropped node takes its subtree with it.
