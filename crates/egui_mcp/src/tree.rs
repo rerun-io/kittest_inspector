@@ -16,17 +16,17 @@ const UNKNOWN_ROLE: &str = "Unknown";
 /// per laid-out line, repeating text the widget above already carries.
 const TEXT_RUN_ROLE: &str = "TextRun";
 
-/// How much of a widget's `label`/`value` [`TreeNode`] carries before cutting it short.
+/// How much of a widget's `label`/`value` [`Widget`] carries before cutting it short.
 ///
 /// A widget's text is unbounded — a text editor's contents, a log line, a chat message — and
 /// egui exports even the scrolled-out parts of a `ScrollArea`, so a whole-tree query can hand
 /// back far more text than an agent needs to find its way around. Filters still match the full
-/// text, and `get_node` still returns it.
-const MAX_TEXT_CHARS: usize = 100;
+/// text, and `get_widget` still returns it.
+pub const MAX_TEXT_CHARS: usize = 100;
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct NodeView {
-    /// Node id, used with `click`, `type_text`, and `get_node`.
+pub struct WidgetDetail {
+    /// Node id, used with `click`, `type_text`, and `get_widget`.
     pub id: String,
     pub role: String,
     pub label: Option<String>,
@@ -38,22 +38,22 @@ pub struct NodeView {
     pub parent_id: Option<String>,
 }
 
-/// A node in `query_tree`'s hierarchical result.
+/// A widget in `widget_tree`'s hierarchical result.
 ///
-/// Only matching nodes appear; each one nests the matches found in its own subtree. A
-/// non-matching node contributes its matches to its nearest matching ancestor, so a `children`
-/// entry is not necessarily a direct child in the app's tree.
+/// Only matching widgets appear; each one nests the matches found in its own subtree. A
+/// non-matching widget contributes its matches to its nearest matching ancestor, so a
+/// `children` entry is not necessarily a direct child in the app's tree.
 ///
-/// Deliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an
-/// agent to read past, and actions take an `id` anyway. `get_node` has the full detail.
+/// Deliberately leaner than [`WidgetDetail`]: a whole tree of `bounds` is a lot of numbers for an
+/// agent to read past, and actions take an `id` anyway. `get_widget` has the full detail.
 ///
-/// A node that says nothing — no children, no `label`, no `value` and no role — is dropped
+/// A widget that says nothing — no children, no `label`, no `value` and no role — is dropped
 /// entirely, as is a `TextRun` that only repeats its parent's text.
 ///
 /// `label` and `value` are cut short at [`MAX_TEXT_CHARS`], marked with a trailing `…`.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct TreeNode {
-    /// Node id, used with `click`, `type_text`, and `get_node`.
+pub struct Widget {
+    /// Node id, used with `click`, `type_text`, and `get_widget`.
     pub id: String,
 
     /// Omitted for a role of `Unknown`, which carries no information.
@@ -66,7 +66,7 @@ pub struct TreeNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 
-    /// Each flag is omitted when false — that is the state of nearly every node.
+    /// Each flag is omitted when false — that is the state of nearly every widget.
     #[serde(default, skip_serializing_if = "is_false")]
     pub focused: bool,
 
@@ -80,15 +80,15 @@ pub struct TreeNode {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Self>,
 
-    /// How many of this node's children `limit` left out. Raise `limit`, narrow the filter, or
-    /// query this node's `id` to see them.
+    /// How many of this widget's children `limit` left out. Raise `limit`, narrow the filter,
+    /// or query this widget's `id` to see them.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub omitted_children: usize,
 }
 
-impl TreeNode {
-    /// A childless node with no `label`, no `value` and no role says nothing an agent can act
-    /// on or read — it is layout scaffolding that survived the filter. `query_tree` drops it.
+impl Widget {
+    /// A childless widget with no `label`, no `value` and no role says nothing an agent can act
+    /// on or read — it is layout scaffolding that survived the filter. `widget_tree` drops it.
     fn is_noise(&self) -> bool {
         self.children.is_empty()
             && self.label.is_none()
@@ -136,10 +136,10 @@ impl RectF {
     }
 }
 
-/// The widget-matching constraints shared by `query_tree`'s filter and the action `Target`s.
+/// The widget-matching constraints shared by `widget_tree`'s filter and the action `Target`s.
 ///
 /// An optional `role` plus up to one text predicate. All are case-insensitive and combined with
-/// logical AND; an all-`None` `Query` matches every node.
+/// logical AND; an all-`None` `Query` matches every widget.
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct Query {
     /// Case-insensitive substring match against *either* `label` or `value`. Prefer this when you
@@ -149,17 +149,17 @@ pub struct Query {
     /// Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).
     /// An unrecognized role is rejected with an error that lists the roles present in the tree.
     pub role: Option<String>,
-    /// Case-insensitive substring match against the node's `label` (its accessible name) only.
+    /// Case-insensitive substring match against the widget's `label` (its accessible name) only.
     /// Note that `Label`/monospace widgets carry their text in `value`, not `label` — for those,
     /// use `content_contains` (or `value_contains`).
     pub label_contains: Option<String>,
-    /// Case-insensitive substring match against the node's `value` only (e.g. a text field's
+    /// Case-insensitive substring match against the widget's `value` only (e.g. a text field's
     /// contents, or a `Label`'s text).
     pub value_contains: Option<String>,
 }
 
 impl Query {
-    /// True when no constraint is set (matches every node).
+    /// True when no constraint is set (matches every widget).
     pub fn is_empty(&self) -> bool {
         self.content_contains.is_none()
             && self.role.is_none()
@@ -218,11 +218,11 @@ impl Query {
 
 /// A subtree to leave out of a query: whatever matches, plus everything below it.
 ///
-/// Either a node `id` or the same constraints a [`Query`] takes. An exclusion with neither set
+/// Either a widget `id` or the same constraints a [`Query`] takes. An exclusion with neither set
 /// matches nothing, rather than swallowing the whole tree.
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct Exclusion {
-    /// Id of the node to leave out, from a previous query.
+    /// Id of the widget to leave out, from a previous query.
     #[serde(default)]
     pub id: Option<String>,
 
@@ -278,7 +278,7 @@ impl Default for QueryFilter {
     }
 }
 
-pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
+pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Widget> {
     let root = tree.state().root();
     let mut nodes = walk(&root, filter, pixels_per_point);
     truncate(&mut nodes, filter.limit);
@@ -289,7 +289,7 @@ pub fn query(tree: &Tree, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tr
 ///
 /// A non-matching node returns its descendants' matches, which its own parent then adopts. An
 /// excluded node returns nothing at all — the exclusion takes its subtree with it.
-fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<TreeNode> {
+fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Widget> {
     if filter
         .exclude
         .as_ref()
@@ -297,13 +297,13 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tre
     {
         return Vec::new();
     }
-    let children: Vec<TreeNode> = node
+    let children: Vec<Widget> = node
         .children()
         .flat_map(|child| walk(&child, filter, pixels_per_point))
         .collect();
     if matches(node, filter) {
         let children = drop_echoed_text_runs(node, children);
-        let view = tree_node(node, children, pixels_per_point);
+        let view = to_widget(node, children, pixels_per_point);
         // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn.
         if view.is_noise() {
             Vec::new()
@@ -333,7 +333,7 @@ fn shorten(text: String) -> String {
 /// not a widget an agent can act on: actions target the parent, which still holds the whole
 /// string. A run whose text the parent *doesn't* carry is left alone, since dropping it would
 /// lose the only copy.
-fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<TreeNode>) -> Vec<TreeNode> {
+fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<Widget>) -> Vec<Widget> {
     let owned_text = format!(
         "{} {}",
         parent.label().unwrap_or_default(),
@@ -362,7 +362,7 @@ fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<TreeNode>) -> Vec<Tree
 ///
 /// A node whose children were cut records how many in `omitted_children`, so the agent can see
 /// that there is more and ask for it by that node's `id`.
-fn truncate(nodes: &mut Vec<TreeNode>, budget: usize) {
+fn truncate(nodes: &mut Vec<Widget>, budget: usize) {
     let full_depth = (0..height(nodes)).rfind(|&depth| count_within(nodes, depth) <= budget);
 
     let Some(full_depth) = full_depth else {
@@ -381,7 +381,7 @@ fn truncate(nodes: &mut Vec<TreeNode>, budget: usize) {
 }
 
 /// Depth of the deepest node in the forest, counting a forest of leaves as 1.
-fn height(nodes: &[TreeNode]) -> usize {
+fn height(nodes: &[Widget]) -> usize {
     nodes
         .iter()
         .map(|node| 1 + height(&node.children))
@@ -390,7 +390,7 @@ fn height(nodes: &[TreeNode]) -> usize {
 }
 
 /// How many nodes there are down to and including `depth` (`0` is the roots).
-fn count_within(nodes: &[TreeNode], depth: usize) -> usize {
+fn count_within(nodes: &[Widget], depth: usize) -> usize {
     nodes
         .iter()
         .map(|node| {
@@ -404,7 +404,7 @@ fn count_within(nodes: &[TreeNode], depth: usize) -> usize {
 }
 
 /// Keep every node down to `depth_left`, then spend `extra` on the level below it.
-fn prune(nodes: &mut [TreeNode], depth_left: usize, extra: &mut usize) {
+fn prune(nodes: &mut [Widget], depth_left: usize, extra: &mut usize) {
     for node in nodes {
         if 0 < depth_left {
             prune(&mut node.children, depth_left - 1, extra);
@@ -421,8 +421,8 @@ fn prune(nodes: &mut [TreeNode], depth_left: usize, extra: &mut usize) {
     }
 }
 
-/// Total number of nodes in a forest of [`TreeNode`]s.
-pub fn count(nodes: &[TreeNode]) -> usize {
+/// Total number of nodes in a forest of [`Widget`]s.
+pub fn count(nodes: &[Widget]) -> usize {
     nodes.iter().map(|node| 1 + count(&node.children)).sum()
 }
 
@@ -437,7 +437,7 @@ pub fn count(nodes: &[TreeNode]) -> usize {
 /// If `role` is not a known `AccessKit` role name.
 pub fn validate_role(role: &str, tree: Option<&Tree>) -> Result<(), String> {
     // `accesskit::Role` is `#[repr(u8)]` with `enumn::N`, so walking `n(0), n(1), …` until `None`
-    // enumerates every variant; `{:?}` yields the same name `matches`/`node_view` expose.
+    // enumerates every variant; `{:?}` yields the same name `matches`/`widget_detail` expose.
     let valid = (0u8..=u8::MAX)
         .map_while(accesskit::Role::n)
         .any(|r| role.eq_ignore_ascii_case(&format!("{r:?}")));
@@ -482,8 +482,8 @@ fn contains_ci(hay: &str, needle: &str) -> bool {
         .contains(&needle.to_ascii_lowercase())
 }
 
-pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
-    NodeView {
+pub fn widget_detail(node: &Node<'_>, pixels_per_point: f32) -> WidgetDetail {
+    WidgetDetail {
         id: format_id(accesskit_id(node)),
         role: format!("{:?}", node.role()),
         label: node.label(),
@@ -498,8 +498,8 @@ pub fn node_view(node: &Node<'_>, pixels_per_point: f32) -> NodeView {
     }
 }
 
-fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) -> TreeNode {
-    let NodeView {
+fn to_widget(node: &Node<'_>, children: Vec<Widget>, pixels_per_point: f32) -> Widget {
+    let WidgetDetail {
         id,
         role,
         label,
@@ -509,8 +509,8 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
         disabled,
         hidden,
         parent_id: _,
-    } = node_view(node, pixels_per_point);
-    TreeNode {
+    } = widget_detail(node, pixels_per_point);
+    Widget {
         id,
         role: (role != UNKNOWN_ROLE).then_some(role),
         label: label.map(shorten),
@@ -525,7 +525,7 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
 
 /// Format a node id the way the tools expose it: lower-case hex, no prefix.
 ///
-/// Hex keeps the ids short, which matters because a `query_tree` result is mostly ids.
+/// Hex keeps the ids short, which matters because a `widget_tree` result is mostly ids.
 pub fn format_id(id: u64) -> String {
     format!("{id:x}")
 }
@@ -568,7 +568,7 @@ impl Locator {
 /// Like kittest's `get_by_*`, this is strict: an ambiguous locator is an error, not a silent
 /// "first match wins". A specific `id` resolves at most one node; a `role`/text match
 /// errors if it hits zero or more than one node, listing the candidates so the caller can narrow
-/// the filter or target a specific `id`. Use `query_tree` (which returns all matches) when you
+/// the filter or target a specific `id`. Use `widget_tree` (which returns all matches) when you
 /// genuinely expect several.
 ///
 /// # Errors
@@ -609,9 +609,9 @@ fn one<'a>(
         0 => Err(format!("no node found matching {what}")),
         1 => Ok(found.remove(0)),
         n => {
-            let views: Vec<NodeView> = found
+            let views: Vec<WidgetDetail> = found
                 .iter()
-                .map(|node| node_view(node, pixels_per_point))
+                .map(|node| widget_detail(node, pixels_per_point))
                 .collect();
             let list =
                 serde_json::to_string_pretty(&views).unwrap_or_else(|_| format!("{n} nodes"));
@@ -671,7 +671,7 @@ mod tests {
         )
     }
 
-    fn query_all(filter: &QueryFilter) -> Vec<TreeNode> {
+    fn query_all(filter: &QueryFilter) -> Vec<Widget> {
         query(&test_tree(), filter, 1.0)
     }
 
@@ -768,19 +768,19 @@ mod tests {
     /// Each test above pins one rule; this pins the shape they add up to, so a change to the
     /// output reads as a diff instead of having to be reconstructed from the assertions.
     #[test]
-    fn the_query_tree_json_is_what_an_agent_reads() {
-        fn pretty(nodes: &[TreeNode]) -> String {
+    fn the_widget_tree_json_is_what_an_agent_reads() {
+        fn pretty(nodes: &[Widget]) -> String {
             serde_json::to_string_pretty(nodes).expect("serialize")
         }
 
         insta::assert_snapshot!(
-            "query_tree_unfiltered",
+            "widget_tree_unfiltered",
             pretty(&query_all(&QueryFilter::default()))
         );
 
         // A filter lifts its matches out of the hierarchy, which is the case worth seeing whole.
         insta::assert_snapshot!(
-            "query_tree_filtered",
+            "widget_tree_filtered",
             pretty(&query_all(&QueryFilter {
                 query: Query {
                     role: Some("button".to_owned()),
@@ -793,7 +793,7 @@ mod tests {
 
     #[test]
     fn a_tree_node_serializes_without_its_empty_fields() {
-        fn keys(node: &TreeNode) -> Vec<String> {
+        fn keys(node: &Widget) -> Vec<String> {
             let json = serde_json::to_value(node).expect("serialize");
             json.as_object().expect("object").keys().cloned().collect()
         }
