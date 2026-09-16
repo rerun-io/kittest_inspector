@@ -13,61 +13,57 @@ expression: "query_app(&QueryFilter { limit: 12, ..Default::default() })"
         "role": "GenericContainer",
         "children": [
           {
-            "id": "29de56167d030090",
+            "id": "d0ab2963125f8970",
             "role": "GenericContainer",
             "children": [
               {
-                "id": "175558c20936c8bf",
-                "role": "GenericContainer",
-                "children": [
-                  {
-                    "id": "d0ab2963125f8970",
-                    "role": "GenericContainer",
-                    "omitted_children": 3
-                  }
-                ]
+                "id": "5fdb4d6fcd23c05e",
+                "role": "Label",
+                "value": "Search"
+              },
+              {
+                "id": "6f3fbf6586d5df4d",
+                "role": "TextInput",
+                "value": "tree"
+              },
+              {
+                "id": "44da3610c66a7249",
+                "role": "Button",
+                "label": "Run"
               }
             ]
           },
           {
-            "id": "f2fcc1fddc4a5c40",
+            "id": "f8760b9a7c488d54",
             "role": "GenericContainer",
             "children": [
               {
-                "id": "f8760b9a7c488d54",
-                "role": "GenericContainer",
-                "children": [
-                  {
-                    "id": "4ba251cd36818ac6",
-                    "role": "Label",
-                    "value": "Projects"
-                  }
-                ],
-                "omitted_children": 3
+                "id": "4ba251cd36818ac6",
+                "role": "Label",
+                "value": "Projects"
+              },
+              {
+                "id": "47c33c87d70251d9",
+                "role": "Button",
+                "label": "egui"
+              },
+              {
+                "id": "ac02b6df4e5fe446",
+                "role": "Button",
+                "label": "kittest"
               }
-            ]
+            ],
+            "omitted_children": 1
           },
           {
-            "id": "354155f02e0419f8",
+            "id": "85236434a2861251",
             "role": "GenericContainer",
-            "children": [
-              {
-                "id": "85236434a2861251",
-                "role": "GenericContainer",
-                "omitted_children": 3
-              }
-            ]
+            "omitted_children": 3
           },
           {
-            "id": "920179beebb0a10c",
+            "id": "d2e22a518e06cd68",
             "role": "GenericContainer",
-            "children": [
-              {
-                "id": "d2e22a518e06cd68",
-                "role": "GenericContainer",
-                "omitted_children": 8
-              }
-            ]
+            "omitted_children": 8
           }
         ]
       }
