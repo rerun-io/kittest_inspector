@@ -613,6 +613,7 @@ impl UiServer {
     /// Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.
     /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
+    /// `limit` (200 by default) caps how many nodes come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any node whose children were cut reports how many in `omitted_children` — query that node's `id` to see them.
     /// `exclude` leaves a subtree out — pass a node `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
     /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
