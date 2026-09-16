@@ -65,7 +65,7 @@ expression: "query_app(&QueryFilter { limit: 12, ..Default::default() })"
               {
                 "id": "d2e22a518e06cd68",
                 "role": "GenericContainer",
-                "omitted_children": 5
+                "omitted_children": 8
               }
             ]
           }

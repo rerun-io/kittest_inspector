@@ -7,7 +7,7 @@
 //! The tools are split across two types so the app-driving half can be reused:
 //!
 //! - [`UiServer`] owns the core UI/inspection commands (`click`, `type_text`, `screenshot`,
-//!   `query_tree`, `batch`, …). It holds a single [`Bridge`] and nothing else — constructing
+//!   `widget_tree`, `batch`, …). It holds a single [`Bridge`] and nothing else — constructing
 //!   one *is* the "connected" state. It is transport-agnostic: pair it with the router from
 //!   [`UiServer::router`] to list and dispatch the commands, so another MCP server can embed
 //!   it next to *its own* connection tools, driving whatever [`Bridge`] it built.
@@ -52,14 +52,14 @@ use serde_json::{Value, json};
 use tokio::sync::Mutex;
 
 use crate::bridge::{Bridge, TreeSnapshot};
-use crate::tree::{self, Locator, NodeView, Query, QueryFilter, TreeNode};
+use crate::tree::{self, Locator, Query, QueryFilter, Widget, WidgetDetail};
 
 // ---------------------------------------------------------------------------------------
 // UiServer + Server
 // ---------------------------------------------------------------------------------------
 
 /// The reusable core: the egui UI/inspection tools (`click`, `type_text`, `screenshot`,
-/// `query_tree`, `batch`, …) bound to one live [`Bridge`].
+/// `widget_tree`, `batch`, …) bound to one live [`Bridge`].
 ///
 /// It holds *only* the bridge — so a `UiServer` always has an app to drive, and its mere
 /// existence is the "connected" state (a host represents "disconnected" as the absence of a
@@ -176,7 +176,7 @@ fn complete(response: CallToolResponse) -> CallToolResult {
     }
 }
 
-/// A recoverable tool failure (no app connected, node not found, bad argument, a bridge I/O
+/// A recoverable tool failure (no app connected, widget not found, bad argument, a bridge I/O
 /// error, …), carried as a plain message string.
 ///
 /// It is *not* a JSON-RPC protocol error: a `String` already implements `rmcp`'s `IntoContents`,
@@ -194,11 +194,11 @@ type ToolResult<T> = Result<T, ToolError>;
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct Target {
-    /// Node id from `query_tree`.
+    /// Widget id from `widget_tree`.
     #[serde(default)]
     pub id: Option<String>,
 
-    /// Widget-matching constraints (`role` and/or a text predicate); see `query_tree`.
+    /// Widget-matching constraints (`role` and/or a text predicate); see `widget_tree`.
     #[serde(flatten)]
     pub query: Query,
 
@@ -219,7 +219,7 @@ impl Target {
     }
 }
 
-/// Resolve a [`Target`] to an optional node id + a logical-point position, fetching a fresh
+/// Resolve a [`Target`] to an optional widget id + a logical-point position, fetching a fresh
 /// tree first. Use [`resolve_in_tree`] directly when resolving several targets against one
 /// snapshot (e.g. a drag's start and end).
 async fn resolve_target(
@@ -250,9 +250,9 @@ fn resolve_in_tree(
     )?;
     let tree = snap.tree.as_ref().ok_or("no accesskit tree yet")?;
     let node = tree::resolve_unique(tree, &locator, snap.pixels_per_point)?;
-    let view = tree::node_view(&node, snap.pixels_per_point);
+    let view = tree::widget_detail(&node, snap.pixels_per_point);
     let bounds = view.bounds.ok_or("node has no bounds — can't target")?;
-    // `node_view` already returns logical-point bounds, so the center needs no further scaling.
+    // `widget_detail` already returns logical-point bounds, so the center needs no further scaling.
     let (cx, cy) = bounds.center();
     let center = egui::Pos2::new(cx as f32, cy as f32);
     Ok((Some(view.id), center))
@@ -294,7 +294,7 @@ pub struct EmptyArgs {}
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ScreenshotArgs {
     /// Output resolution in pixels per logical point.
-    /// Defaults to `1.0`, which makes screenshot pixels line up 1:1 with the logical coordinates used by `click`/`query_tree`.
+    /// Defaults to `1.0`, which makes screenshot pixels line up 1:1 with the logical coordinates used by `click`/`widget_tree`.
     /// Higher values give a sharper image, capped at the display's native scale (no upscaling).
     #[serde(default = "default_pixels_per_point")]
     pub pixels_per_point: f32,
@@ -309,8 +309,8 @@ fn default_pixels_per_point() -> f32 {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct GetNodeArgs {
-    /// Node id, as returned by `query_tree`.
+pub struct GetWidgetArgs {
+    /// Widget id, as returned by `widget_tree`.
     pub id: String,
 }
 
@@ -451,8 +451,8 @@ pub struct ResizeArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct WaitForArgs {
-    /// Which nodes to wait for (`content_contains` and/or `role`/`label_contains`/`value_contains`);
-    /// see `query_tree`. Omit every constraint to wait on `min_steps` alone.
+    /// Which widgets to wait for (`content_contains` and/or `role`/`label_contains`/`value_contains`);
+    /// see `widget_tree`. Omit every constraint to wait on `min_steps` alone.
     #[serde(flatten)]
     pub query: Query,
     #[serde(default = "default_wait_timeout")]
@@ -478,13 +478,13 @@ fn default_min_matches() -> u32 {
 pub struct TypeTextArgs {
     pub text: String,
 
-    /// Optional focus target: node id from `query_tree` to focus before typing.
+    /// Optional focus target: widget id from `widget_tree` to focus before typing.
     /// Omit all locator fields to type into whatever is currently focused.
     #[serde(default)]
     pub id: Option<String>,
 
     /// Optional focus target by match (`content_contains` and/or `role`/`label_contains`/`value_contains`);
-    /// see `query_tree`. Omit all locator fields to type into whatever is currently focused.
+    /// see `widget_tree`. Omit all locator fields to type into whatever is currently focused.
     #[serde(flatten)]
     pub query: Query,
 }
@@ -514,16 +514,16 @@ pub struct BatchAction {
 // collection/optional results are wrapped in a named field rather than returned bare.
 // ---------------------------------------------------------------------------------------
 
-/// `query_tree` result: the matching nodes, nested by ancestry.
+/// `widget_tree` result: the matching widgets, nested by ancestry.
 #[derive(Debug, Serialize, JsonSchema)]
-pub struct QueryTreeResult {
-    pub nodes: Vec<TreeNode>,
+pub struct WidgetTreeResult {
+    pub nodes: Vec<Widget>,
 }
 
-/// `get_node` result: the resolved node, or `null` if the id didn't match.
+/// `get_widget` result: the resolved widget, or `null` if the id didn't match.
 #[derive(Debug, Serialize, JsonSchema)]
-pub struct GetNodeResult {
-    pub node: Option<NodeView>,
+pub struct GetWidgetResult {
+    pub node: Option<WidgetDetail>,
 }
 
 /// Lifecycle tools — connection management, served directly by [`Server`].
@@ -583,7 +583,7 @@ impl Server {
 #[tool_router]
 impl UiServer {
     /// Capture the current frame as a PNG screenshot.
-    /// Defaults to logical-point resolution (`pixels_per_point: 1.0`) so pixels align with `click`/`query_tree` coordinates; pass a higher `pixels_per_point` for detail, or `save_path` to also write it to disk.
+    /// Defaults to logical-point resolution (`pixels_per_point: 1.0`) so pixels align with `click`/`widget_tree` coordinates; pass a higher `pixels_per_point` for detail, or `save_path` to also write it to disk.
     /// Requires the app window to be visible — a fully-occluded or minimized window can't render a frame to capture (notably on macOS), so the call times out; bring the window to the foreground first.
     #[tool]
     async fn screenshot(
@@ -610,20 +610,20 @@ impl UiServer {
     // The return type is spelled `Result<Json<…>, ToolError>` rather than the `ToolResult` alias
     // on purpose: `#[tool]` derives the output schema by syntactically matching `Json<T>` /
     // `Result<Json<T>, _>`, and the alias would hide it, silently dropping the schema.
-    /// Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.
-    /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
+    /// Walk the app's widget tree and return the widgets matching the filter, nested by ancestry: each one carries the matches from its own subtree in `children`.
+    /// Widgets in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
-    /// `limit` (200 by default) caps how many nodes come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any node whose children were cut reports how many in `omitted_children` — query that node's `id` to see them.
-    /// `exclude` leaves a subtree out — pass a node `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
-    /// Use the returned `id` with `click`, `type_text`, or `get_node`.
-    /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
-    /// `label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its node.
-    /// Empty scaffolding is dropped: a node with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
+    /// `limit` (200 by default) caps how many widgets come back: whole levels are kept from the top down, so the app's structure survives and the leaves go first, and any widget whose children were cut reports how many in `omitted_children` — query that widget's `id` to see them.
+    /// `exclude` leaves a subtree out — pass a widget `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
+    /// Use the returned `id` with `click`, `type_text`, or `get_widget`.
+    /// The widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
+    /// `label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its widget.
+    /// Empty scaffolding is dropped: a widget with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
     #[tool]
-    async fn query_tree(
+    async fn widget_tree(
         &self,
         Parameters(filter): Parameters<QueryFilter>,
-    ) -> Result<Json<QueryTreeResult>, ToolError> {
+    ) -> Result<Json<WidgetTreeResult>, ToolError> {
         let bridge = self.bridge();
         let snap = bridge.fetch_tree().await?;
         let roles = [
@@ -640,40 +640,40 @@ impl UiServer {
             Some(tree) => tree::query(&tree, &filter, snap.pixels_per_point),
             None => Vec::new(),
         };
-        Ok(Json(QueryTreeResult { nodes }))
+        Ok(Json(WidgetTreeResult { nodes }))
     }
 
-    /// Return a single node by id (from `query_tree`), in full detail: its `bounds` in logical points, its `parent_id`, its state, and its `label`/`value` untruncated.
-    /// This is the follow-up to `query_tree`, which omits `bounds` and cuts long text short to stay compact.
+    /// Return a single widget by id (from `widget_tree`), in full detail: its `bounds` in logical points, its `parent_id`, its state, and its `label`/`value` untruncated.
+    /// This is the follow-up to `widget_tree`, which omits `bounds` and cuts long text short to stay compact.
     // Spelled-out `Result<Json<…>, ToolError>` (not the `ToolResult` alias) so `#[tool]` derives
-    // the output schema — see `query_tree`.
+    // the output schema — see `widget_tree`.
     #[tool]
-    async fn get_node(
+    async fn get_widget(
         &self,
-        Parameters(args): Parameters<GetNodeArgs>,
-    ) -> Result<Json<GetNodeResult>, ToolError> {
+        Parameters(args): Parameters<GetWidgetArgs>,
+    ) -> Result<Json<GetWidgetResult>, ToolError> {
         let bridge = self.bridge();
         let id = tree::parse_id(&args.id).ok_or_else(|| {
             format!(
-                "invalid id `{}` — pass an `id` exactly as `query_tree` returned it",
+                "invalid id `{}` — pass an `id` exactly as `widget_tree` returned it",
                 args.id
             )
         })?;
         let locator = Locator::Id { id };
         let snap = bridge.fetch_tree().await?;
         let ppp = snap.pixels_per_point;
-        // `get_node` is a lookup, not an action: a missing id is `null`, not an error.
+        // `get_widget` is a lookup, not an action: a missing id is `null`, not an error.
         let node = match snap.tree {
             Some(tree) => tree::resolve_unique(&tree, &locator, ppp)
                 .ok()
-                .map(|n| tree::node_view(&n, ppp)),
+                .map(|n| tree::widget_detail(&n, ppp)),
             None => None,
         };
-        Ok(Json(GetNodeResult { node }))
+        Ok(Json(GetWidgetResult { node }))
     }
 
-    /// Click the center of a node's bounding box, or a raw `pos` in logical points.
-    /// Specify either a locator (`id` from `query_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.
+    /// Click the center of a widget's bounding box, or a raw `pos` in logical points.
+    /// Specify either a locator (`id` from `widget_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.
     /// `button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).
     /// `count: 2` → double-click, `3` → triple.
     #[tool]
@@ -714,7 +714,7 @@ impl UiServer {
         })))
     }
 
-    /// Move the pointer over a node (or raw `pos`) without clicking.
+    /// Move the pointer over a widget (or raw `pos`) without clicking.
     /// Tooltips and hover popups only appear after a short delay — follow with `wait_for` (e.g. its `min_steps`) to let them settle before reading the tree or screenshotting.
     #[tool]
     async fn hover(&self, Parameters(args): Parameters<HoverArgs>) -> ToolResult<CallToolResult> {
@@ -728,7 +728,7 @@ impl UiServer {
         })))
     }
 
-    /// Send a mouse wheel scroll over a node (or raw `pos`).
+    /// Send a mouse wheel scroll over a widget (or raw `pos`).
     /// `delta` is in logical points: positive Y scrolls down (reveals content below); positive X scrolls right.
     #[tool]
     async fn scroll(&self, Parameters(args): Parameters<ScrollArgs>) -> ToolResult<CallToolResult> {
@@ -827,7 +827,7 @@ impl UiServer {
     }
 
     /// Poll the widget tree until its conditions hold, or until `timeout_secs` elapses.
-    /// Waits until at least `min_matches` visible nodes match the filter (when one is given) *and* at least `min_steps` frames have rendered since the call began.
+    /// Waits until at least `min_matches` visible widgets match the filter (when one is given) *and* at least `min_steps` frames have rendered since the call began.
     /// The text filter is `role` and/or one of `content_contains` (matches `label` or `value` — prefer this; e.g. monospace/`Label` text lives in `value`), `label_contains`, `value_contains`.
     /// Requires a filter (`content_contains`/`role`/`label_contains`/`value_contains`) or a non-zero `min_steps`.
     #[tool]
@@ -861,7 +861,7 @@ impl UiServer {
             if let Some(role) = &filter.query.role {
                 tree::validate_role(role, snap.tree.as_ref())?;
             }
-            let matches: Vec<TreeNode> = match (has_filter, snap.tree) {
+            let matches: Vec<Widget> = match (has_filter, snap.tree) {
                 (true, Some(tree)) => tree::query(&tree, &filter, snap.pixels_per_point),
                 _ => Vec::new(),
             };
@@ -890,7 +890,7 @@ impl UiServer {
     }
 
     /// Type text into the currently focused widget.
-    /// Optionally focus a node first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an `AccessKit` focus request, not a click, so it won't move the cursor or clear an existing text selection.
+    /// Optionally focus a widget first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an `AccessKit` focus request, not a click, so it won't move the cursor or clear an existing text selection.
     #[tool]
     async fn type_text(
         &self,
@@ -974,7 +974,7 @@ impl UiServer {
     /// Stops on the first error.
     /// Results are emitted in execution order, interleaved: each step contributes one JSON text item followed by any image items it produced (e.g. screenshots).
     /// `batch` cannot be nested.
-    /// Use this to act and observe in one call, e.g. a `click` then a `query_tree` or `screenshot`.
+    /// Use this to act and observe in one call, e.g. a `click` then a `widget_tree` or `screenshot`.
     #[tool]
     async fn batch(
         &self,
@@ -1041,20 +1041,20 @@ const INSTRUCTIONS: &str = r#"This mcp drives a live egui app: it reads the app'
 
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
-- Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
-- `query_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short with a trailing `…`. For one node in full — `bounds` in logical points, its parent, its whole text — follow up with `get_node` on that node's `id`. Filters always match the full text, so searching for a phrase past the cut still works.
+- Start most tasks with `widget_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
+- `widget_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short with a trailing `…`. For one widget in full — `bounds` in logical points, its parent, its whole text — follow up with `get_widget` on that widget's `id`. Filters always match the full text, so searching for a phrase past the cut still works.
 
 Targeting widgets:
-- Prefer locators — an `id` from `query_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
-- For text matches prefer `content_contains`: it matches a node's `label` (accessible name) OR its `value`. This matters because many widgets (`Label`, monospace text, counters) carry their text in `value` with an empty `label`, so `label_contains` alone silently misses them. Use `label_contains`/`value_contains` only when you specifically need to match one field.
-- A locator in an action must match exactly one node. If it matches several, the call errors and lists the candidates — narrow the filter (add a `role`, or switch to a more specific text match) or target a specific `id`. Use `query_tree` when you want every match.
+- Prefer locators — an `id` from `widget_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
+- For text matches prefer `content_contains`: it matches a widget's `label` (accessible name) OR its `value`. This matters because many widgets (`Label`, monospace text, counters) carry their text in `value` with an empty `label`, so `label_contains` alone silently misses them. Use `label_contains`/`value_contains` only when you specifically need to match one field.
+- A locator in an action must match exactly one widget. If it matches several, the call errors and lists the candidates — narrow the filter (add a `role`, or switch to a more specific text match) or target a specific `id`. Use `widget_tree` when you want every match.
 
 Acting and verifying:
-- After an action that changes the UI, confirm it landed: `query_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
+- After an action that changes the UI, confirm it landed: `widget_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 
 Conventions:
-- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
+- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a widget's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerInfo {

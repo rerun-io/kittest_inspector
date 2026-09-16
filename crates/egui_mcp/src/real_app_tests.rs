@@ -1,4 +1,4 @@
-//! `query_tree` run against a real egui frame.
+//! `widget_tree` run against a real egui frame.
 //!
 //! The hand-built trees in [`crate::tree`]'s tests pin one rule each, on a tree of five nodes.
 //! This module builds a small but ordinary app — panels, a heading, buttons, a text field, a
@@ -7,12 +7,12 @@
 //! output: the containers it emits, where it puts a widget's text, and how deep the nesting
 //! gets.
 //!
-//! The snapshots carry no positions (a [`TreeNode`] has no bounds), so they don't move with
+//! The snapshots carry no positions (a [`Widget`] has no bounds), so they don't move with
 //! fonts or platform.
 
 use accesskit_consumer::Tree;
 
-use crate::tree::{Exclusion, Query, QueryFilter, TreeNode, query};
+use crate::tree::{Exclusion, Query, QueryFilter, Widget, query};
 
 /// Logical size of the frame the tests lay out. Wide enough that nothing is clipped, which
 /// would otherwise show up as a `hidden` flag that differs between platforms.
@@ -142,7 +142,7 @@ fn the_demo_app_on_screen() {
     harness.snapshot("demo_app");
 }
 
-/// The whole app, the way `query_tree` with no filter hands it to an agent.
+/// The whole app, the way `widget_tree` with no filter hands it to an agent.
 ///
 /// Without a `limit`, so the snapshot stays the whole picture — what `limit` does to it is its
 /// own test.
@@ -256,7 +256,7 @@ fn an_excluded_panel_takes_its_text_with_it() {
 }
 
 /// The id of the nearest node above a `heading`, i.e. the container that holds that section.
-fn find_container_of(nodes: &[TreeNode], heading: &str) -> Option<String> {
+fn find_container_of(nodes: &[Widget], heading: &str) -> Option<String> {
     nodes.iter().find_map(|node| {
         let holds_heading = node
             .children
@@ -274,7 +274,7 @@ fn find_container_of(nodes: &[TreeNode], heading: &str) -> Option<String> {
 /// pruning rules shouldn't leave a node that carries nothing at all.
 #[test]
 fn every_returned_node_is_actionable() {
-    fn check(nodes: &[TreeNode]) {
+    fn check(nodes: &[Widget]) {
         for node in nodes {
             assert!(!node.id.is_empty(), "every node is addressable");
             assert!(

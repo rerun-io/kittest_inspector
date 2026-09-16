@@ -199,90 +199,41 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "e20536b0f4e39d73",
                                 "role": "Label",
                                 "label": "Label",
-                                "value": "Label",
-                                "children": [
-                                  {
-                                    "id": "e52c19ee75a2d9c4",
-                                    "role": "TextRun",
-                                    "value": "Label"
-                                  }
-                                ]
+                                "value": "Label"
                               },
                               {
                                 "id": "d713be38ba8c13d4",
                                 "role": "Label",
-                                "value": "Welcome to the widget gallery!",
-                                "children": [
-                                  {
-                                    "id": "c0261bd1305c51e8",
-                                    "role": "TextRun",
-                                    "value": "Welcome to the widget gallery!"
-                                  }
-                                ]
+                                "value": "Welcome to the widget gallery!"
                               },
                               {
                                 "id": "48845bd87f76651b",
                                 "role": "Label",
                                 "label": "Hyperlink",
-                                "value": "Hyperlink",
-                                "children": [
-                                  {
-                                    "id": "7c286b0cbe5c1500",
-                                    "role": "TextRun",
-                                    "value": "Hyperlink"
-                                  }
-                                ]
+                                "value": "Hyperlink"
                               },
                               {
                                 "id": "92ced92911317344",
                                 "role": "Label",
                                 "label": " egui on GitHub",
-                                "value": " egui on GitHub",
-                                "children": [
-                                  {
-                                    "id": "991f6b4bf94d7006",
-                                    "role": "TextRun",
-                                    "value": " egui on GitHub"
-                                  }
-                                ]
+                                "value": " egui on GitHub"
                               },
                               {
                                 "id": "4833857049026c6",
                                 "role": "Label",
                                 "label": "TextEdit",
-                                "value": "TextEdit",
-                                "children": [
-                                  {
-                                    "id": "d3f7f7f3db28fb1",
-                                    "role": "TextRun",
-                                    "value": "TextEdit"
-                                  }
-                                ]
+                                "value": "TextEdit"
                               },
                               {
                                 "id": "3e1593196b667852",
                                 "role": "TextInput",
-                                "value": "",
-                                "children": [
-                                  {
-                                    "id": "3db9ccfd06151bcd",
-                                    "role": "TextRun",
-                                    "value": ""
-                                  }
-                                ]
+                                "value": ""
                               },
                               {
                                 "id": "d15f6c092f79ec9f",
                                 "role": "Label",
                                 "label": "Button",
-                                "value": "Button",
-                                "children": [
-                                  {
-                                    "id": "192e24e0bdfd30aa",
-                                    "role": "TextRun",
-                                    "value": "Button"
-                                  }
-                                ]
+                                "value": "Button"
                               },
                               {
                                 "id": "ec63454b51548c53",
@@ -293,40 +244,19 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "c2ca8602f09cb9ba",
                                 "role": "Label",
                                 "label": "Link",
-                                "value": "Link",
-                                "children": [
-                                  {
-                                    "id": "9393e7130947a9bf",
-                                    "role": "TextRun",
-                                    "value": "Link"
-                                  }
-                                ]
+                                "value": "Link"
                               },
                               {
                                 "id": "dc05be6ca66ea284",
                                 "role": "Label",
                                 "label": "Click me!",
-                                "value": "Click me!",
-                                "children": [
-                                  {
-                                    "id": "e1161f5fd09f4111",
-                                    "role": "TextRun",
-                                    "value": "Click me!"
-                                  }
-                                ]
+                                "value": "Click me!"
                               },
                               {
                                 "id": "60e3ea5d1c2a450",
                                 "role": "Label",
                                 "label": "Checkbox",
-                                "value": "Checkbox",
-                                "children": [
-                                  {
-                                    "id": "421d600405d3e90b",
-                                    "role": "TextRun",
-                                    "value": "Checkbox"
-                                  }
-                                ]
+                                "value": "Checkbox"
                               },
                               {
                                 "id": "938932354ca94638",
@@ -337,14 +267,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "dbbe90d172064b28",
                                 "role": "Label",
                                 "label": "RadioButton",
-                                "value": "RadioButton",
-                                "children": [
-                                  {
-                                    "id": "6c8972a84d514373",
-                                    "role": "TextRun",
-                                    "value": "RadioButton"
-                                  }
-                                ]
+                                "value": "RadioButton"
                               },
                               {
                                 "id": "2f6df56c77202968",
@@ -371,14 +294,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "25a572e6899d34d3",
                                 "role": "Label",
                                 "label": "SelectableLabel",
-                                "value": "SelectableLabel",
-                                "children": [
-                                  {
-                                    "id": "eb26930f8cdfb33b",
-                                    "role": "TextRun",
-                                    "value": "SelectableLabel"
-                                  }
-                                ]
+                                "value": "SelectableLabel"
                               },
                               {
                                 "id": "568243fd409a65c3",
@@ -405,14 +321,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "2b079b655f8aa24c",
                                 "role": "Label",
                                 "label": "ComboBox",
-                                "value": "ComboBox",
-                                "children": [
-                                  {
-                                    "id": "3f33638352775ec2",
-                                    "role": "TextRun",
-                                    "value": "ComboBox"
-                                  }
-                                ]
+                                "value": "ComboBox"
                               },
                               {
                                 "id": "3c88d0e1f72d6737",
@@ -433,14 +342,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                   {
                                     "id": "d2c2c7d0898dfe6a",
                                     "role": "Label",
-                                    "value": "Take your pick",
-                                    "children": [
-                                      {
-                                        "id": "62afbf4515900be9",
-                                        "role": "TextRun",
-                                        "value": "Take your pick"
-                                      }
-                                    ]
+                                    "value": "Take your pick"
                                   }
                                 ]
                               },
@@ -448,14 +350,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "ba0be981da5b426",
                                 "role": "Label",
                                 "label": "Slider",
-                                "value": "Slider",
-                                "children": [
-                                  {
-                                    "id": "a44661339924c1fc",
-                                    "role": "TextRun",
-                                    "value": "Slider"
-                                  }
-                                ]
+                                "value": "Slider"
                               },
                               {
                                 "id": "45b2a96a25c8afc0",
@@ -476,14 +371,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "7d79ede951fde045",
                                 "role": "Label",
                                 "label": "DragValue",
-                                "value": "DragValue",
-                                "children": [
-                                  {
-                                    "id": "1e0e2748d227e4a3",
-                                    "role": "TextRun",
-                                    "value": "DragValue"
-                                  }
-                                ]
+                                "value": "DragValue"
                               },
                               {
                                 "id": "e884cd07624df292",
@@ -494,14 +382,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "927864cfef6fdd45",
                                 "role": "Label",
                                 "label": "ProgressBar",
-                                "value": "ProgressBar",
-                                "children": [
-                                  {
-                                    "id": "da9d63fdec5a289e",
-                                    "role": "TextRun",
-                                    "value": "ProgressBar"
-                                  }
-                                ]
+                                "value": "ProgressBar"
                               },
                               {
                                 "id": "b9c03e36244c4659",
@@ -511,14 +392,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "fc4ff5e5d8f0d688",
                                 "role": "Label",
                                 "label": "Color picker",
-                                "value": "Color picker",
-                                "children": [
-                                  {
-                                    "id": "d12c45c044c8fe56",
-                                    "role": "TextRun",
-                                    "value": "Color picker"
-                                  }
-                                ]
+                                "value": "Color picker"
                               },
                               {
                                 "id": "e1815cfac8761082",
@@ -528,14 +402,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "9023bbfe398d145",
                                 "role": "Label",
                                 "label": "Image",
-                                "value": "Image",
-                                "children": [
-                                  {
-                                    "id": "8c112d442f94e8be",
-                                    "role": "TextRun",
-                                    "value": "Image"
-                                  }
-                                ]
+                                "value": "Image"
                               },
                               {
                                 "id": "6e50df357ebac861",
@@ -545,14 +412,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "ce0c0e6ff28c3084",
                                 "role": "Label",
                                 "label": "Button with image",
-                                "value": "Button with image",
-                                "children": [
-                                  {
-                                    "id": "5c20e1e444d3fa88",
-                                    "role": "TextRun",
-                                    "value": "Button with image"
-                                  }
-                                ]
+                                "value": "Button with image"
                               },
                               {
                                 "id": "28b278d32f7a7867",
@@ -563,27 +423,13 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "1aad4187894de02b",
                                 "role": "Label",
                                 "label": "Separator",
-                                "value": "Separator",
-                                "children": [
-                                  {
-                                    "id": "b3cae6778207126b",
-                                    "role": "TextRun",
-                                    "value": "Separator"
-                                  }
-                                ]
+                                "value": "Separator"
                               },
                               {
                                 "id": "e90263d4ce885d68",
                                 "role": "Label",
                                 "label": "CollapsingHeader",
-                                "value": "CollapsingHeader",
-                                "children": [
-                                  {
-                                    "id": "85a8a2630a5b88c8",
-                                    "role": "TextRun",
-                                    "value": "CollapsingHeader"
-                                  }
-                                ]
+                                "value": "CollapsingHeader"
                               },
                               {
                                 "id": "3512107b17672758",
@@ -600,14 +446,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                                 "id": "686218ec3bb411c4",
                                 "role": "Label",
                                 "label": "Custom widget",
-                                "value": "Custom widget",
-                                "children": [
-                                  {
-                                    "id": "480ac5f1b168b36b",
-                                    "role": "TextRun",
-                                    "value": "Custom widget"
-                                  }
-                                ]
+                                "value": "Custom widget"
                               },
                               {
                                 "id": "d0bd850a24bf4f07",
@@ -642,14 +481,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                       {
                         "id": "f273f32e01c0bda0",
                         "role": "Label",
-                        "value": "Opacity",
-                        "children": [
-                          {
-                            "id": "662b8a1aca98ada0",
-                            "role": "TextRun",
-                            "value": "Opacity"
-                          }
-                        ]
+                        "value": "Opacity"
                       }
                     ]
                   },
@@ -661,27 +493,13 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                         "id": "ad5cb3e3dae2ef04",
                         "role": "Label",
                         "label": "https://docs.rs/egui/",
-                        "value": "https://docs.rs/egui/",
-                        "children": [
-                          {
-                            "id": "d14a0158b524f882",
-                            "role": "TextRun",
-                            "value": "https://docs.rs/egui/"
-                          }
-                        ]
+                        "value": "https://docs.rs/egui/"
                       },
                       {
                         "id": "5dc95be367fa42cd",
                         "role": "Label",
                         "label": "Source code of the widget gallery",
-                        "value": "Source code of the widget gallery",
-                        "children": [
-                          {
-                            "id": "b3cce5768e7de454",
-                            "role": "TextRun",
-                            "value": "Source code of the widget gallery"
-                          }
-                        ]
+                        "value": "Source code of the widget gallery"
                       }
                     ]
                   }
