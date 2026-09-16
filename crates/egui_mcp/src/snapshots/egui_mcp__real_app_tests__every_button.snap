@@ -1,0 +1,37 @@
+---
+source: crates/egui_mcp/src/real_app_tests.rs
+expression: "query_app(&QueryFilter\n{\n    query: Query { role: Some(\"Button\".to_owned()), ..Default::default() },\n    ..Default::default()\n})"
+---
+[
+  {
+    "id": "44da3610c66a7249",
+    "role": "Button",
+    "label": "Run"
+  },
+  {
+    "id": "47c33c87d70251d9",
+    "role": "Button",
+    "label": "egui"
+  },
+  {
+    "id": "ac02b6df4e5fe446",
+    "role": "Button",
+    "label": "kittest"
+  },
+  {
+    "id": "333c9182ae950a46",
+    "role": "Button",
+    "label": "rerun"
+  },
+  {
+    "id": "cdfe39bc5c18786c",
+    "role": "Button",
+    "label": "Advanced"
+  },
+  {
+    "id": "e2a6df5857d2103a",
+    "role": "Button",
+    "label": "Reset",
+    "disabled": true
+  }
+]

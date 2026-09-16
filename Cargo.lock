@@ -1201,7 +1201,7 @@ dependencies = [
  "bytemuck",
  "ecolor 0.34.1",
  "emath 0.34.1",
- "epaint_default_fonts",
+ "epaint_default_fonts 0.34.1",
  "font-types 0.11.3",
  "harfrust 0.5.2",
  "log",
@@ -1226,6 +1226,7 @@ dependencies = [
  "ahash",
  "ecolor 0.36.1",
  "emath 0.36.1",
+ "epaint_default_fonts 0.36.2",
  "font-types 0.12.4",
  "harfrust 0.12.0",
  "log",
@@ -1245,6 +1246,12 @@ dependencies = [
 name = "epaint_default_fonts"
 version = "0.34.1"
 source = "git+https://github.com/emilk/egui?branch=lucas%2Fkittest-inspect#0cefd89141a072119201b73984b6ca606ad933e6"
+
+[[package]]
+name = "epaint_default_fonts"
+version = "0.36.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "773fa9c96dd0dbef887e39d0ed6177f141cce4d68e6041df77570aa3702dfa13"
 
 [[package]]
 name = "equivalent"

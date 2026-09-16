@@ -1,0 +1,204 @@
+---
+source: crates/egui_mcp/src/real_app_tests.rs
+expression: "query_app(&QueryFilter::default())"
+---
+[
+  {
+    "id": "311f83ea3bd3e4",
+    "role": "Window",
+    "focused": true,
+    "children": [
+      {
+        "id": "fec0f6fb9dd14fa2",
+        "role": "GenericContainer",
+        "children": [
+          {
+            "id": "29de56167d030090",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "175558c20936c8bf",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "d0ab2963125f8970",
+                    "role": "GenericContainer",
+                    "children": [
+                      {
+                        "id": "5fdb4d6fcd23c05e",
+                        "role": "Label",
+                        "value": "Search",
+                        "children": [
+                          {
+                            "id": "55b7f16f419afcfb",
+                            "role": "TextRun",
+                            "value": "Search"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "6f3fbf6586d5df4d",
+                        "role": "TextInput",
+                        "value": "tree",
+                        "children": [
+                          {
+                            "id": "209a165af4860f05",
+                            "role": "TextRun",
+                            "value": "tree"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "44da3610c66a7249",
+                        "role": "Button",
+                        "label": "Run"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "f2fcc1fddc4a5c40",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "f8760b9a7c488d54",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "4ba251cd36818ac6",
+                    "role": "Label",
+                    "value": "Projects",
+                    "children": [
+                      {
+                        "id": "819f43a8957f3f41",
+                        "role": "TextRun",
+                        "value": "Projects"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "47c33c87d70251d9",
+                    "role": "Button",
+                    "label": "egui"
+                  },
+                  {
+                    "id": "ac02b6df4e5fe446",
+                    "role": "Button",
+                    "label": "kittest"
+                  },
+                  {
+                    "id": "333c9182ae950a46",
+                    "role": "Button",
+                    "label": "rerun"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "66935719e9b381fb",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "7c1a5b99c794f57a",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "31a4a2f7fa3c6e3a",
+                    "role": "Label",
+                    "value": "Settings",
+                    "children": [
+                      {
+                        "id": "9b6c53a515900780",
+                        "role": "TextRun",
+                        "value": "Settings"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "7ec6dbc40f6d8074",
+                    "role": "CheckBox",
+                    "label": "Wrap long lines"
+                  },
+                  {
+                    "id": "440527ba7f608ae9",
+                    "role": "GenericContainer",
+                    "children": [
+                      {
+                        "id": "6cb3627bb6bfc321",
+                        "role": "Slider",
+                        "label": "Volume"
+                      },
+                      {
+                        "id": "f27478cae1e1e938",
+                        "role": "SpinButton",
+                        "label": "Volume",
+                        "value": "42"
+                      },
+                      {
+                        "id": "a8ae8fe411b300a1",
+                        "role": "Label",
+                        "value": "Volume",
+                        "children": [
+                          {
+                            "id": "fbf81660662904e0",
+                            "role": "TextRun",
+                            "value": "Volume"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "6e9a3530eca39e37",
+                    "role": "GenericContainer",
+                    "children": [
+                      {
+                        "id": "cdfe39bc5c18786c",
+                        "role": "Button",
+                        "label": "Advanced"
+                      },
+                      {
+                        "id": "cf0243e687c4d4fb",
+                        "role": "GenericContainer",
+                        "children": [
+                          {
+                            "id": "8654f8a58c39d59b",
+                            "role": "GenericContainer",
+                            "children": [
+                              {
+                                "id": "d352649252596037",
+                                "role": "Label",
+                                "value": "Nothing to see here",
+                                "children": [
+                                  {
+                                    "id": "1589b5936a39ba19",
+                                    "role": "TextRun",
+                                    "value": "Nothing to see here"
+                                  }
+                                ]
+                              },
+                              {
+                                "id": "e2a6df5857d2103a",
+                                "role": "Button",
+                                "label": "Reset",
+                                "disabled": true
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
