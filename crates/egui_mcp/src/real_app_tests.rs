@@ -129,6 +129,19 @@ fn query_app(filter: &QueryFilter) -> String {
     serde_json::to_string_pretty(&nodes).expect("serialize")
 }
 
+/// A picture of the frame the tree snapshots describe, so a person can read one against the
+/// other: which widget each node is, and what the containers between them are doing.
+#[test]
+fn the_demo_app_on_screen() {
+    let mut app = DemoApp::default();
+    let mut harness = egui_kittest::Harness::builder()
+        .with_size(SCREEN_SIZE)
+        .wgpu()
+        .build_ui(move |ui| app.ui(ui));
+    harness.run();
+    harness.snapshot("demo_app");
+}
+
 /// The whole app, the way `query_tree` with no filter hands it to an agent.
 ///
 /// Without a `limit`, so the snapshot stays the whole picture — what `limit` does to it is its
