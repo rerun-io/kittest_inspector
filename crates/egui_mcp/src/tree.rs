@@ -551,6 +551,34 @@ mod tests {
         );
     }
 
+    /// The JSON an agent actually receives.
+    ///
+    /// Each test above pins one rule; this pins the shape they add up to, so a change to the
+    /// output reads as a diff instead of having to be reconstructed from the assertions.
+    #[test]
+    fn the_query_tree_json_is_what_an_agent_reads() {
+        fn pretty(nodes: &[TreeNode]) -> String {
+            serde_json::to_string_pretty(nodes).expect("serialize")
+        }
+
+        insta::assert_snapshot!(
+            "query_tree_unfiltered",
+            pretty(&query_all(&QueryFilter::default()))
+        );
+
+        // A filter lifts its matches out of the hierarchy, which is the case worth seeing whole.
+        insta::assert_snapshot!(
+            "query_tree_filtered",
+            pretty(&query_all(&QueryFilter {
+                query: Query {
+                    role: Some("button".to_owned()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }))
+        );
+    }
+
     #[test]
     fn a_tree_node_serializes_without_its_empty_fields() {
         fn keys(node: &TreeNode) -> Vec<String> {
