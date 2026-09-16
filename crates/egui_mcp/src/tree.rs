@@ -27,6 +27,9 @@ pub struct NodeView {
 /// Only matching nodes appear; each one nests the matches found in its own subtree. A
 /// non-matching node contributes its matches to its nearest matching ancestor, so a `children`
 /// entry is not necessarily a direct child in the app's tree.
+///
+/// Deliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an
+/// agent to read past, and actions take an `id` anyway. `get_node` has the full detail.
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
     /// Node id in hex, used with `click`, `type_text`, and `get_node`.
@@ -34,7 +37,6 @@ pub struct TreeNode {
     pub role: String,
     pub label: Option<String>,
     pub value: Option<String>,
-    pub bounds: Option<RectF>,
     pub focused: bool,
     pub disabled: bool,
     pub hidden: bool,
@@ -296,7 +298,7 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
         role,
         label,
         value,
-        bounds,
+        bounds: _,
         focused,
         disabled,
         hidden,
@@ -307,7 +309,6 @@ fn tree_node(node: &Node<'_>, children: Vec<TreeNode>, pixels_per_point: f32) ->
         role,
         label,
         value,
-        bounds,
         focused,
         disabled,
         hidden,

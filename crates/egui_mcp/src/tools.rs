@@ -614,6 +614,7 @@ impl UiServer {
     /// Nodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
+    /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands) and its parent.
     #[tool]
     async fn query_tree(
         &self,
@@ -631,7 +632,8 @@ impl UiServer {
         Ok(Json(QueryTreeResult { nodes }))
     }
 
-    /// Return a single node by id (from `query_tree`).
+    /// Return a single node by id (from `query_tree`), in full detail: its `bounds` in logical points, its `parent_id`, and its state.
+    /// This is the follow-up to `query_tree`, which omits `bounds` to stay compact.
     // Spelled-out `Result<Json<…>, ToolError>` (not the `ToolResult` alias) so `#[tool]` derives
     // the output schema — see `query_tree`.
     #[tool]
@@ -1028,6 +1030,7 @@ const INSTRUCTIONS: &str = r#"This mcp drives a live egui app: it reads the app'
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
 - Start most tasks with `query_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
+- `query_tree` returns an abridged tree. For one node's full detail — its `bounds` in logical points, its parent — follow up with `get_node` on that node's `id`.
 
 Targeting widgets:
 - Prefer locators — an `id` from `query_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
@@ -1039,7 +1042,7 @@ Acting and verifying:
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 
 Conventions:
-- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `query_tree`/`get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
+- Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_node`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerInfo {
