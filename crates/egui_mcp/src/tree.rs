@@ -34,6 +34,8 @@ pub struct NodeView {
 ///
 /// Deliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an
 /// agent to read past, and actions take an `id` anyway. `get_node` has the full detail.
+///
+/// Nodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct TreeNode {
     /// Node id in hex, used with `click`, `type_text`, and `get_node`.
@@ -49,6 +51,14 @@ pub struct TreeNode {
     pub disabled: bool,
     pub hidden: bool,
     pub children: Vec<Self>,
+}
+
+impl TreeNode {
+    /// A childless node with neither a `label` nor a role says nothing an agent can act on or
+    /// read — it is layout scaffolding that survived the filter. `query_tree` drops it.
+    fn is_noise(&self) -> bool {
+        self.children.is_empty() && self.label.is_none() && self.role.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, JsonSchema)]
@@ -203,7 +213,13 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Tre
         .flat_map(|child| walk(&child, filter, pixels_per_point))
         .collect();
     if matches(node, filter) {
-        vec![tree_node(node, children, pixels_per_point)]
+        let view = tree_node(node, children, pixels_per_point);
+        // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn.
+        if view.is_noise() {
+            Vec::new()
+        } else {
+            vec![view]
+        }
     } else {
         children
     }

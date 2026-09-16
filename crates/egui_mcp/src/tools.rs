@@ -615,6 +615,7 @@ impl UiServer {
     /// `role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.
     /// Use the returned `id` with `click`, `type_text`, or `get_node`.
     /// The nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands) and its parent.
+    /// Empty scaffolding is dropped: a node with no children, no `label`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
     #[tool]
     async fn query_tree(
         &self,

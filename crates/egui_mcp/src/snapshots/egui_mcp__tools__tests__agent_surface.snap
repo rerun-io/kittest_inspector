@@ -627,7 +627,7 @@ Conventions:
 
 {
   "name": "query_tree",
-  "description": "Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.\nNodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\nUse the returned `id` with `click`, `type_text`, or `get_node`.\nThe nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands) and its parent.",
+  "description": "Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.\nNodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\nUse the returned `id` with `click`, `type_text`, or `get_node`.\nThe nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands) and its parent.\nEmpty scaffolding is dropped: a node with no children, no `label`, and no `role` (a `role` of `Unknown` is reported as none) never appears.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
@@ -675,7 +675,7 @@ Conventions:
   "outputSchema": {
     "$defs": {
       "TreeNode": {
-        "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_node` has the full detail.",
+        "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_node` has the full detail.\n\nNodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].",
         "properties": {
           "children": {
             "items": {
