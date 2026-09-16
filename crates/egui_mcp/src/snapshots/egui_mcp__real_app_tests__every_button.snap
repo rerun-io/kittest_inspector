@@ -33,5 +33,35 @@ expression: "query_app(&QueryFilter\n{\n    query: Query { role: Some(\"Button\"
     "role": "Button",
     "label": "Reset",
     "disabled": true
+  },
+  {
+    "id": "ec63454b51548c53",
+    "role": "Button",
+    "label": "Click me!"
+  },
+  {
+    "id": "47d22251be010243",
+    "role": "Button",
+    "label": "First"
+  },
+  {
+    "id": "220d3af9e7df4bc2",
+    "role": "Button",
+    "label": "Second"
+  },
+  {
+    "id": "323785727c384a9c",
+    "role": "Button",
+    "label": "Third"
+  },
+  {
+    "id": "28b278d32f7a7867",
+    "role": "Button",
+    "label": "Click me!"
+  },
+  {
+    "id": "18813c8724eae525",
+    "role": "Button",
+    "label": "Click to see what is hidden!"
   }
 ]

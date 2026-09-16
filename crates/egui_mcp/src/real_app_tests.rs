@@ -28,6 +28,10 @@ struct DemoApp {
     wrap_lines: bool,
     volume: f32,
     project: usize,
+
+    /// egui's own gallery, for coverage of the widget kinds we wouldn't think to write out:
+    /// combo box, radio group, colour picker, progress bar, hyperlink, and the rest.
+    gallery: egui_demo_lib::WidgetGallery,
 }
 
 impl Default for DemoApp {
@@ -37,12 +41,16 @@ impl Default for DemoApp {
             wrap_lines: true,
             volume: 42.0,
             project: 1,
+            gallery: egui_demo_lib::WidgetGallery::default(),
         }
     }
 }
 
 impl DemoApp {
     fn ui(&mut self, ui: &mut egui::Ui) {
+        // The gallery shows an image, which needs a loader to be anything but a broken icon.
+        egui_extras::install_image_loaders(ui.ctx());
+
         egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Search");
@@ -77,6 +85,12 @@ impl DemoApp {
                     ui.label("Nothing to see here");
                     ui.add_enabled(false, egui::Button::new("Reset"));
                 });
+
+            // Neither of these is a widget an agent can act on, so neither should reach it.
+            ui.separator();
+            ui.add_space(16.0);
+
+            egui_demo_lib::View::ui(&mut self.gallery, ui);
         });
     }
 }
@@ -116,9 +130,15 @@ fn query_app(filter: &QueryFilter) -> String {
 }
 
 /// The whole app, the way `query_tree` with no filter hands it to an agent.
+///
+/// Without a `limit`, so the snapshot stays the whole picture — what `limit` does to it is its
+/// own test.
 #[test]
 fn the_whole_app() {
-    insta::assert_snapshot!(query_app(&QueryFilter::default()));
+    insta::assert_snapshot!(query_app(&QueryFilter {
+        limit: usize::MAX,
+        ..Default::default()
+    }));
 }
 
 /// Every button, lifted out of the panels and rows that hold them.

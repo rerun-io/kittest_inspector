@@ -38,6 +38,10 @@ tracing-subscriber.workspace = true
 [dev-dependencies]
 # `default_fonts` so a test can lay out a real frame; the lib itself needs no fonts.
 egui = { version = "0.36.0", features = ["default_fonts"] }
+# The demo app shows egui's own widget gallery, so the tests cover every widget kind egui
+# reports to AccessKit rather than the handful we'd think to write out.
+egui_demo_lib = "0.36.2"
+egui_extras = { version = "0.36.2", features = ["image", "svg"] }
 insta.workspace = true
 
 [lints]
