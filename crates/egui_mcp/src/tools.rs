@@ -40,7 +40,7 @@ use rmcp::{
     },
     model::{
         CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
-        ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
+        JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
     },
     schemars,
     service::{RequestContext, RoleServer},
@@ -101,6 +101,11 @@ impl UiServer {
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
+        if let Some(tool) = router.get(&request.name)
+            && let Err(err) = check_arguments(&tool.input_schema, request.arguments.as_ref())
+        {
+            return Ok(text_error(err));
+        }
         let tcc = ToolCallContext::new(self, request, context);
         Ok(complete(router.call(tcc).await?))
     }
@@ -165,6 +170,89 @@ fn content_as_text(c: &ContentBlock) -> Option<&str> {
 
 fn content_is_image(c: &ContentBlock) -> bool {
     matches!(c, ContentBlock::Image(_))
+}
+
+/// Reject an argument the tool's schema doesn't declare.
+///
+/// Serde ignores unknown keys, and `#[serde(flatten)]` rules out `deny_unknown_fields`, so
+/// without this a misspelled argument reads as "not set": `content_contain` silently becomes a
+/// filter that matches every widget, and a mistyped locator field quietly turns into "no
+/// locator". The tool's own input schema is the list of what it takes, so the check covers the
+/// flattened fields and the nested argument objects alike.
+fn check_arguments(schema: &JsonObject, arguments: Option<&JsonObject>) -> Result<(), String> {
+    let Some(arguments) = arguments else {
+        return Ok(());
+    };
+    let empty = JsonObject::new();
+    let defs = schema
+        .get("$defs")
+        .and_then(Value::as_object)
+        .unwrap_or(&empty);
+    check_against(schema, arguments, defs, "")
+}
+
+/// The body of [`check_arguments`], recursing into nested objects and array items.
+///
+/// Anything the schema doesn't pin down — a free-form object, a shape we can't resolve — is
+/// left alone, so this only ever rejects a key the tool positively doesn't have.
+fn check_against(
+    schema: &JsonObject,
+    arguments: &JsonObject,
+    defs: &JsonObject,
+    path: &str,
+) -> Result<(), String> {
+    if schema.get("additionalProperties") == Some(&Value::Bool(true)) {
+        return Ok(());
+    }
+    let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+        return Ok(());
+    };
+
+    for (key, value) in arguments {
+        let Some(property) = properties.get(key) else {
+            let mut known: Vec<&str> = properties.keys().map(String::as_str).collect();
+            known.sort_unstable();
+            return Err(format!(
+                "unknown argument `{path}{key}` — this takes: {}",
+                known.join(", ")
+            ));
+        };
+
+        let nested_path = format!("{path}{key}.");
+        if let Some(nested) = value.as_object()
+            && let Some(nested_schema) = object_schema(property, defs)
+        {
+            check_against(nested_schema, nested, defs, &nested_path)?;
+        }
+        if let Some(items) = value.as_array()
+            && let Some(item_schema) = property
+                .as_object()
+                .and_then(|p| p.get("items"))
+                .and_then(|items| object_schema(items, defs))
+        {
+            for item in items.iter().filter_map(Value::as_object) {
+                check_against(item_schema, item, defs, &nested_path)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Follow `$ref` and `anyOf` until an object schema with `properties`, if there is one.
+fn object_schema<'a>(schema: &'a Value, defs: &'a JsonObject) -> Option<&'a JsonObject> {
+    let schema = schema.as_object()?;
+    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
+        let name = reference.strip_prefix("#/$defs/")?;
+        return object_schema(defs.get(name)?, defs);
+    }
+    if schema.contains_key("properties") {
+        return Some(schema);
+    }
+    schema
+        .get("anyOf")?
+        .as_array()?
+        .iter()
+        .find_map(|variant| object_schema(variant, defs))
 }
 
 /// Collapses a router response to its completed result.
@@ -1056,6 +1144,7 @@ Acting and verifying:
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 
 Conventions:
+- An argument a tool doesn't take is an error, not something ignored, and the error lists the ones it does take. So a typo tells you, instead of reading as "not set" — which for a filter would mean "match everything".
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a widget's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
 impl ServerHandler for Server {
@@ -1083,6 +1172,11 @@ impl ServerHandler for Server {
     ) -> Result<CallToolResponse, McpError> {
         // Lifecycle tools run on `self`; everything else is delegated to the attached UI server.
         if self.lifecycle_router.has_route(&request.name) {
+            if let Some(tool) = self.lifecycle_router.get(&request.name)
+                && let Err(err) = check_arguments(&tool.input_schema, request.arguments.as_ref())
+            {
+                return Ok(text_error(err).into());
+            }
             let tcc = ToolCallContext::new(self, request, context);
             return self.lifecycle_router.call(tcc).await;
         }
@@ -1108,8 +1202,64 @@ mod tests {
     use std::fmt::Write as _;
 
     use rmcp::ServerHandler as _;
+    use serde_json::json;
 
     use super::*;
+
+    /// Check `args` the way a call to `name` would.
+    #[track_caller]
+    fn check(name: &str, args: &Value) -> Result<(), String> {
+        let tool = Server::new().get_tool(name).expect("a tool by that name");
+        let args = args.as_object().expect("an object").clone();
+        check_arguments(&tool.input_schema, Some(&args))
+    }
+
+    /// A misspelled filter used to read as "no filter", which quietly matches every widget.
+    #[test]
+    fn a_misspelled_argument_is_an_error() {
+        let err = check("widget_tree", &json!({ "content_contain": "Save" }))
+            .expect_err("`content_contain` is not an argument");
+        assert!(
+            err.starts_with("unknown argument `content_contain`"),
+            "{err}"
+        );
+        assert!(
+            err.contains("content_contains"),
+            "it lists what is taken: {err}"
+        );
+
+        // Flattened fields belong to the tool just as much as the declared ones.
+        check(
+            "widget_tree",
+            &json!({ "content_contains": "Save", "limit": 5 }),
+        )
+        .expect("both are real arguments");
+    }
+
+    /// Nested argument objects are checked too — `exclude` takes the same shape as the filter.
+    #[test]
+    fn a_misspelled_argument_inside_a_nested_object_is_an_error() {
+        let err = check("widget_tree", &json!({ "exclude": { "rol": "Button" } }))
+            .expect_err("`rol` is not a field of `exclude`");
+        assert!(err.starts_with("unknown argument `exclude.rol`"), "{err}");
+
+        check("widget_tree", &json!({ "exclude": { "role": "Button" } })).expect("`role` is one");
+    }
+
+    /// A batch step carries another tool's arguments, which the schema leaves free-form; the
+    /// step itself still runs through its own tool's check when it is dispatched.
+    #[test]
+    fn a_free_form_argument_object_is_left_alone() {
+        check(
+            "batch",
+            &json!({ "actions": [{ "name": "click", "args": { "anything": 1 } }] }),
+        )
+        .expect("`args` is free-form");
+
+        let err = check("batch", &json!({ "actions": [{ "tool": "click" }] }))
+            .expect_err("a step has a fixed shape");
+        assert!(err.contains("`actions.tool`"), "{err}");
+    }
 
     /// Snapshot the entire agent-facing surface: the server `instructions` plus every tool's
     /// name, description, and input/output schemas — exactly what an MCP client is shown on
