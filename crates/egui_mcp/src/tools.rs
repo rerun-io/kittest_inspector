@@ -617,7 +617,7 @@ impl UiServer {
     /// `exclude` leaves a subtree out — pass a widget `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.
     /// Use the returned `id` with `click`, `type_text`, or `get_widget`.
     /// The widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
-    /// `label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its widget.
+    /// `label` and `value` are cut short at 100 characters, marked with a trailing ` […]`; the filters still match against the whole text, so a phrase past the cut still finds its widget.
     /// Empty scaffolding is dropped: a widget with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
     #[tool]
     async fn widget_tree(
@@ -1042,7 +1042,7 @@ const INSTRUCTIONS: &str = r#"This mcp drives a live egui app: it reads the app'
 Getting oriented:
 - Call `attach` first (check `status` if unsure); the app-driving tools return "no app connected" until then.
 - Start most tasks with `widget_tree` to discover widgets and their ids, and/or `screenshot` to see the rendered frame.
-- `widget_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short with a trailing `…`. For one widget in full — `bounds` in logical points, its parent, its whole text — follow up with `get_widget` on that widget's `id`. Filters always match the full text, so searching for a phrase past the cut still works.
+- `widget_tree` returns an abridged tree: no `bounds`, and text over 100 characters cut short. A trailing ` […]` in a `label` or `value` means exactly that — the text goes on, and `get_widget` on that widget's `id` returns all of it, along with its `bounds` in logical points and its parent. Filters always match the full text, so searching for a phrase from past the cut still finds the widget.
 
 Targeting widgets:
 - Prefer locators — an `id` from `widget_tree`, a `role`, or a text match — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.

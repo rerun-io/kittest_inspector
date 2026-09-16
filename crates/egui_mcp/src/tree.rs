@@ -24,6 +24,10 @@ const TEXT_RUN_ROLE: &str = "TextRun";
 /// text, and `get_widget` still returns it.
 pub const MAX_TEXT_CHARS: usize = 100;
 
+/// Marks text cut short at [`MAX_TEXT_CHARS`]. Distinct enough that an agent can tell it from
+/// an ellipsis the app itself drew.
+pub const TRUNCATION_MARKER: &str = " […]";
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct WidgetDetail {
     /// Node id, used with `click`, `type_text`, and `get_widget`.
@@ -50,7 +54,8 @@ pub struct WidgetDetail {
 /// A widget that says nothing — no children, no `label`, no `value` and no role — is dropped
 /// entirely, as is a `TextRun` that only repeats its parent's text.
 ///
-/// `label` and `value` are cut short at [`MAX_TEXT_CHARS`], marked with a trailing `…`.
+/// `label` and `value` are cut short at [`MAX_TEXT_CHARS`], marked with a trailing
+/// [`TRUNCATION_MARKER`].
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Widget {
     /// Node id, used with `click`, `type_text`, and `get_widget`.
@@ -315,7 +320,8 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Wid
     }
 }
 
-/// Cut `text` short at [`MAX_TEXT_CHARS`], marking the cut with a trailing `…`.
+/// Cut `text` short at [`MAX_TEXT_CHARS`], marking the cut with a trailing
+/// [`TRUNCATION_MARKER`].
 ///
 /// Counted in characters, not bytes, so the cut lands on a character boundary.
 fn shorten(text: String) -> String {
@@ -323,7 +329,7 @@ fn shorten(text: String) -> String {
         return text;
     }
     let kept: String = text.chars().take(MAX_TEXT_CHARS).collect();
-    format!("{kept}…")
+    format!("{kept}{TRUNCATION_MARKER}")
 }
 
 /// Drop the `TextRun` children whose text `parent` already carries.
@@ -347,7 +353,7 @@ fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<Widget>) -> Vec<Widget
                 && child.value.as_deref().is_some_and(|text| {
                     // The run's own text may have been cut short, so compare the part of it
                     // that survived.
-                    owned_text.contains(text.trim_end_matches('…'))
+                    owned_text.contains(text.trim_end_matches(TRUNCATION_MARKER))
                 });
             !is_echo
         })
