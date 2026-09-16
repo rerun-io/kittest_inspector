@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 /// declares no kind (`WidgetType::Other`), so it tells an agent nothing.
 const UNKNOWN_ROLE: &str = "Unknown";
 
+/// `accesskit::Role::GenericContainer`, as `{:?}` spells it. egui's layout scaffolding: a
+/// `Ui`, a row, a panel's frame. It is a place, not a widget.
+const GENERIC_CONTAINER_ROLE: &str = "GenericContainer";
+
 /// `accesskit::Role::TextRun`, as `{:?}` spells it. egui puts one under every text widget, one
 /// per laid-out line, repeating text the widget above already carries.
 const TEXT_RUN_ROLE: &str = "TextRun";
@@ -92,6 +96,33 @@ pub struct Widget {
 }
 
 impl Widget {
+    /// Does this widget only stand between its parent and its one child?
+    ///
+    /// egui nests layout containers several deep — a panel inside a frame inside a `Ui` — and a
+    /// chain of them with one child each is a chain of nothing: no text, no state, nothing to
+    /// click. The child says everything the chain does.
+    ///
+    /// Not collapsed when the caller asked for this role by name, since they would then get
+    /// nothing back at all.
+    fn is_pass_through(&self, filter: &QueryFilter) -> bool {
+        let is_container = match self.role.as_deref() {
+            None => true,
+            Some(role) => role == GENERIC_CONTAINER_ROLE,
+        };
+        let asked_for =
+            filter.query.role.as_deref().is_some_and(|wanted| {
+                wanted.eq_ignore_ascii_case(self.role.as_deref().unwrap_or(""))
+            });
+        is_container
+            && !asked_for
+            && self.children.len() == 1
+            && self.label.is_none()
+            && self.value.is_none()
+            && !self.focused
+            && !self.disabled
+            && !self.hidden
+    }
+
     /// A childless widget with no `label`, no `value` and no role says nothing an agent can act
     /// on or read — it is layout scaffolding that survived the filter. `widget_tree` drops it.
     fn is_noise(&self) -> bool {
@@ -328,10 +359,13 @@ fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Wid
         .collect();
     if matches(node, filter) {
         let children = drop_echoed_text_runs(node, children);
-        let view = to_widget(node, children, pixels_per_point);
-        // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn.
+        let mut view = to_widget(node, children, pixels_per_point);
+        // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn,
+        // and a chain of containers collapses a link at a time.
         if view.is_noise() {
             Vec::new()
+        } else if view.is_pass_through(filter) {
+            std::mem::take(&mut view.children)
         } else {
             vec![view]
         }
@@ -664,15 +698,36 @@ mod tests {
 
     use super::*;
 
-    /// `root(Window) → [scaffold(Unknown) → [button(Button "OK")], text(Unknown "hi"),
-    /// valued(Unknown, value "42"), noise(Unknown)]`
+    /// ```text
+    /// root(Window)
+    /// ├── scaffold(Unknown)          — holds two things, so it stays
+    /// │   ├── button(Button "OK")
+    /// │   └── toggle(CheckBox "On")
+    /// ├── wrapper(GenericContainer)  — holds one thing and says nothing, so it collapses
+    /// │   └── link(Link "Docs")
+    /// ├── text(Unknown, label "hi")
+    /// ├── valued(Unknown, value "42")
+    /// └── noise(Unknown)             — says nothing at all, so it goes
+    /// ```
     fn test_tree() -> Tree {
         let mut root = AkNode::new(Role::Window);
-        root.set_children(vec![NodeId(0x2), NodeId(0xff), NodeId(0x5), NodeId(0x4)]);
+        root.set_children(vec![
+            NodeId(0x2),
+            NodeId(0x7),
+            NodeId(0xff),
+            NodeId(0x5),
+            NodeId(0x4),
+        ]);
         let mut scaffold = AkNode::new(Role::Unknown);
-        scaffold.set_children(vec![NodeId(0x3)]);
+        scaffold.set_children(vec![NodeId(0x3), NodeId(0x6)]);
         let mut button = AkNode::new(Role::Button);
         button.set_label("OK");
+        let mut toggle = AkNode::new(Role::CheckBox);
+        toggle.set_label("On");
+        let mut wrapper = AkNode::new(Role::GenericContainer);
+        wrapper.set_children(vec![NodeId(0x8)]);
+        let mut link = AkNode::new(Role::Link);
+        link.set_label("Docs");
         let mut text = AkNode::new(Role::Unknown);
         text.set_label("hi");
         let mut valued = AkNode::new(Role::Unknown);
@@ -685,6 +740,9 @@ mod tests {
                     (NodeId(0x1), root),
                     (NodeId(0x2), scaffold),
                     (NodeId(0x3), button),
+                    (NodeId(0x6), toggle),
+                    (NodeId(0x7), wrapper),
+                    (NodeId(0x8), link),
                     (NodeId(0xff), text),
                     (NodeId(0x5), valued),
                     (NodeId(0x4), noise),
@@ -708,13 +766,17 @@ mod tests {
         let root = &nodes[0];
         assert_eq!(root.id, "1");
         assert_eq!(root.role.as_deref(), Some("Window"));
-        // `noise` is childless, label-less and role-less, so it's gone; `scaffold` survives
-        // despite being all three, because it still has a child.
+        // `noise` says nothing, so it's gone; `wrapper` collapses into the link it held;
+        // `scaffold` stays, because it holds two things.
         let ids: Vec<&str> = root.children.iter().map(|n| n.id.as_str()).collect();
-        assert_eq!(ids, ["2", "ff", "5"], "`valued` is kept for its text alone");
+        assert_eq!(
+            ids,
+            ["2", "8", "ff", "5"],
+            "`8` is the link, standing where its wrapper did"
+        );
         assert_eq!(root.children[0].role, None, "`Unknown` is omitted");
         assert_eq!(root.children[0].children[0].id, "3");
-        assert_eq!(count(&nodes), 5);
+        assert_eq!(count(&nodes), 7);
     }
 
     #[test]
@@ -732,6 +794,28 @@ mod tests {
     }
 
     #[test]
+    fn a_container_holding_one_thing_and_saying_nothing_collapses() {
+        let nodes = query_all(&QueryFilter::default());
+        let ids = |nodes: &[Widget]| -> Vec<String> {
+            nodes.iter().map(|node| node.id.clone()).collect()
+        };
+        assert!(
+            !ids(&nodes[0].children).contains(&"7".to_owned()),
+            "`wrapper` had nothing to add and one child to add it to"
+        );
+
+        // Unless that role is what the caller asked for — an empty result would be worse.
+        let asked = query_all(&QueryFilter {
+            query: Query {
+                role: Some("genericcontainer".to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        assert_eq!(ids(&asked), ["7"]);
+    }
+
+    #[test]
     fn an_exclusion_drops_the_matching_node_and_everything_under_it() {
         let nodes = query_all(&QueryFilter {
             exclude: Some(Exclusion {
@@ -743,20 +827,25 @@ mod tests {
             }),
             ..Default::default()
         });
-        // `scaffold` is excluded, so the button below it goes too, though it matches nothing
-        // in the exclusion itself.
+        // `scaffold` is excluded, so the button and the check box below it go too, though
+        // neither matches the exclusion itself. Only the link is left, whose own wrapper is a
+        // `GenericContainer` rather than `Unknown`.
         let ids: Vec<&str> = nodes[0].children.iter().map(|n| n.id.as_str()).collect();
-        assert!(ids.is_empty(), "every child here is `Unknown`: {ids:?}");
+        assert_eq!(
+            ids,
+            ["8"],
+            "the excluded subtrees took their contents with them"
+        );
     }
 
     #[test]
     fn a_root_walks_one_subtree_and_a_missing_one_is_an_error() {
         let nodes = query_all(&QueryFilter {
-            // `scaffold`, whose only child is the button.
+            // `scaffold`, which holds the button and the check box.
             root: Some("2".to_owned()),
             ..Default::default()
         });
-        assert_eq!(count(&nodes), 2, "the subtree, not the app");
+        assert_eq!(count(&nodes), 3, "the subtree, not the app");
         assert_eq!(nodes[0].id, "2");
         assert_eq!(nodes[0].children[0].label.as_deref(), Some("OK"));
 
@@ -851,23 +940,23 @@ mod tests {
 
     #[test]
     fn limit_keeps_whole_levels_and_says_what_it_dropped() {
-        // The roots (1) fit, the level below (4) doesn't, so the root is kept whole and the one
-        // node the budget has left goes to its first child.
+        // The root (1) fits, the level below (4) doesn't, so the root is kept whole and the
+        // one node the budget has left goes to its first child.
         let nodes = query_all(&QueryFilter {
             limit: 2,
             ..Default::default()
         });
         assert_eq!(count(&nodes), 2);
         assert_eq!(nodes[0].children.len(), 1);
-        assert_eq!(nodes[0].omitted_children, 2, "`ff` and `5` were left out");
+        assert_eq!(nodes[0].omitted_children, 3, "the link, `ff` and `5`");
         assert_eq!(
-            nodes[0].children[0].omitted_children, 1,
-            "and the button below the kept child"
+            nodes[0].children[0].omitted_children, 2,
+            "and both widgets below the kept child"
         );
 
         // A budget that fits every level leaves the tree alone.
         let whole = query_all(&QueryFilter::default());
-        assert_eq!(count(&whole), 5);
+        assert_eq!(count(&whole), 7);
         assert!(whole.iter().all(|node| node.omitted_children == 0));
 
         assert!(

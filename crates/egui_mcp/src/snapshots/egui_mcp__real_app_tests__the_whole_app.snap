@@ -13,495 +13,435 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
         "role": "GenericContainer",
         "children": [
           {
-            "id": "29de56167d030090",
+            "id": "d0ab2963125f8970",
             "role": "GenericContainer",
             "children": [
               {
-                "id": "175558c20936c8bf",
+                "id": "5fdb4d6fcd23c05e",
+                "role": "Label",
+                "value": "Search"
+              },
+              {
+                "id": "6f3fbf6586d5df4d",
+                "role": "TextInput",
+                "value": "tree"
+              },
+              {
+                "id": "44da3610c66a7249",
+                "role": "Button",
+                "label": "Run"
+              }
+            ]
+          },
+          {
+            "id": "f8760b9a7c488d54",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "4ba251cd36818ac6",
+                "role": "Label",
+                "value": "Projects"
+              },
+              {
+                "id": "47c33c87d70251d9",
+                "role": "Button",
+                "label": "egui"
+              },
+              {
+                "id": "ac02b6df4e5fe446",
+                "role": "Button",
+                "label": "kittest"
+              },
+              {
+                "id": "333c9182ae950a46",
+                "role": "Button",
+                "label": "rerun"
+              }
+            ]
+          },
+          {
+            "id": "85236434a2861251",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "2aec18abebb3e684",
+                "role": "Label",
+                "value": "Chat"
+              },
+              {
+                "id": "50574715c1dcec2f",
+                "role": "Label",
+                "value": "where is the volume slider?"
+              },
+              {
+                "id": "598fde41b126c439",
+                "role": "Label",
+                "value": "Second row of the settings panel."
+              }
+            ]
+          },
+          {
+            "id": "d2e22a518e06cd68",
+            "role": "GenericContainer",
+            "children": [
+              {
+                "id": "ed9ddd035da6670d",
+                "role": "Label",
+                "value": "Settings"
+              },
+              {
+                "id": "29da03ef98693066",
+                "role": "Label",
+                "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame ha […]"
+              },
+              {
+                "id": "41ef20283b896828",
+                "role": "CheckBox",
+                "label": "Wrap long lines"
+              },
+              {
+                "id": "4b6ee9170c2e59ce",
                 "role": "GenericContainer",
                 "children": [
                   {
-                    "id": "d0ab2963125f8970",
+                    "id": "96a8f155b766eefb",
+                    "role": "Slider",
+                    "label": "Volume"
+                  },
+                  {
+                    "id": "db68ddc08d32ccd1",
+                    "role": "SpinButton",
+                    "label": "Volume",
+                    "value": "42"
+                  },
+                  {
+                    "id": "2389025b21f1c31",
+                    "role": "Label",
+                    "value": "Volume"
+                  }
+                ]
+              },
+              {
+                "id": "2d46b7e030d207d8",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "cdfe39bc5c18786c",
+                    "role": "Button",
+                    "label": "Advanced"
+                  },
+                  {
+                    "id": "3026bddbd83be355",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "5fdb4d6fcd23c05e",
+                        "id": "57ecedfc8498d6ff",
                         "role": "Label",
-                        "value": "Search"
+                        "value": "Nothing to see here"
                       },
                       {
-                        "id": "6f3fbf6586d5df4d",
-                        "role": "TextInput",
-                        "value": "tree"
-                      },
-                      {
-                        "id": "44da3610c66a7249",
+                        "id": "53f88f38e6976025",
                         "role": "Button",
-                        "label": "Run"
+                        "label": "Reset",
+                        "disabled": true
                       }
                     ]
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "id": "f2fcc1fddc4a5c40",
-            "role": "GenericContainer",
-            "children": [
+              },
               {
-                "id": "f8760b9a7c488d54",
+                "id": "2ae631bf94e55049",
                 "role": "GenericContainer",
                 "children": [
                   {
-                    "id": "4ba251cd36818ac6",
+                    "id": "e20536b0f4e39d73",
                     "role": "Label",
-                    "value": "Projects"
+                    "label": "Label",
+                    "value": "Label"
                   },
                   {
-                    "id": "47c33c87d70251d9",
+                    "id": "d713be38ba8c13d4",
+                    "role": "Label",
+                    "value": "Welcome to the widget gallery!"
+                  },
+                  {
+                    "id": "48845bd87f76651b",
+                    "role": "Label",
+                    "label": "Hyperlink",
+                    "value": "Hyperlink"
+                  },
+                  {
+                    "id": "92ced92911317344",
+                    "role": "Label",
+                    "label": " egui on GitHub",
+                    "value": " egui on GitHub"
+                  },
+                  {
+                    "id": "4833857049026c6",
+                    "role": "Label",
+                    "label": "TextEdit",
+                    "value": "TextEdit"
+                  },
+                  {
+                    "id": "3e1593196b667852",
+                    "role": "TextInput",
+                    "value": ""
+                  },
+                  {
+                    "id": "d15f6c092f79ec9f",
+                    "role": "Label",
+                    "label": "Button",
+                    "value": "Button"
+                  },
+                  {
+                    "id": "ec63454b51548c53",
                     "role": "Button",
-                    "label": "egui"
+                    "label": "Click me!"
                   },
                   {
-                    "id": "ac02b6df4e5fe446",
-                    "role": "Button",
-                    "label": "kittest"
-                  },
-                  {
-                    "id": "333c9182ae950a46",
-                    "role": "Button",
-                    "label": "rerun"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "354155f02e0419f8",
-            "role": "GenericContainer",
-            "children": [
-              {
-                "id": "85236434a2861251",
-                "role": "GenericContainer",
-                "children": [
-                  {
-                    "id": "2aec18abebb3e684",
+                    "id": "c2ca8602f09cb9ba",
                     "role": "Label",
-                    "value": "Chat"
+                    "label": "Link",
+                    "value": "Link"
                   },
                   {
-                    "id": "50574715c1dcec2f",
+                    "id": "dc05be6ca66ea284",
                     "role": "Label",
-                    "value": "where is the volume slider?"
+                    "label": "Click me!",
+                    "value": "Click me!"
                   },
                   {
-                    "id": "598fde41b126c439",
+                    "id": "60e3ea5d1c2a450",
                     "role": "Label",
-                    "value": "Second row of the settings panel."
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "920179beebb0a10c",
-            "role": "GenericContainer",
-            "children": [
-              {
-                "id": "d2e22a518e06cd68",
-                "role": "GenericContainer",
-                "children": [
-                  {
-                    "id": "ed9ddd035da6670d",
-                    "role": "Label",
-                    "value": "Settings"
+                    "label": "Checkbox",
+                    "value": "Checkbox"
                   },
                   {
-                    "id": "29da03ef98693066",
-                    "role": "Label",
-                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame ha […]"
-                  },
-                  {
-                    "id": "41ef20283b896828",
+                    "id": "938932354ca94638",
                     "role": "CheckBox",
-                    "label": "Wrap long lines"
+                    "label": "Checkbox"
                   },
                   {
-                    "id": "4b6ee9170c2e59ce",
+                    "id": "dbbe90d172064b28",
+                    "role": "Label",
+                    "label": "RadioButton",
+                    "value": "RadioButton"
+                  },
+                  {
+                    "id": "2f6df56c77202968",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "96a8f155b766eefb",
-                        "role": "Slider",
-                        "label": "Volume"
+                        "id": "acc74bcbe19f0ac0",
+                        "role": "RadioButton",
+                        "label": "First"
                       },
                       {
-                        "id": "db68ddc08d32ccd1",
-                        "role": "SpinButton",
-                        "label": "Volume",
-                        "value": "42"
+                        "id": "58f0d54234d605c0",
+                        "role": "RadioButton",
+                        "label": "Second"
                       },
                       {
-                        "id": "2389025b21f1c31",
-                        "role": "Label",
-                        "value": "Volume"
+                        "id": "8efe6e20358c9ada",
+                        "role": "RadioButton",
+                        "label": "Third"
                       }
                     ]
                   },
                   {
-                    "id": "2d46b7e030d207d8",
+                    "id": "25a572e6899d34d3",
+                    "role": "Label",
+                    "label": "SelectableLabel",
+                    "value": "SelectableLabel"
+                  },
+                  {
+                    "id": "568243fd409a65c3",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "cdfe39bc5c18786c",
+                        "id": "47d22251be010243",
                         "role": "Button",
-                        "label": "Advanced"
+                        "label": "First"
                       },
                       {
-                        "id": "6f50df37e0905dd6",
-                        "role": "GenericContainer",
-                        "children": [
-                          {
-                            "id": "3026bddbd83be355",
-                            "role": "GenericContainer",
-                            "children": [
-                              {
-                                "id": "57ecedfc8498d6ff",
-                                "role": "Label",
-                                "value": "Nothing to see here"
-                              },
-                              {
-                                "id": "53f88f38e6976025",
-                                "role": "Button",
-                                "label": "Reset",
-                                "disabled": true
-                              }
-                            ]
-                          }
-                        ]
+                        "id": "220d3af9e7df4bc2",
+                        "role": "Button",
+                        "label": "Second"
+                      },
+                      {
+                        "id": "323785727c384a9c",
+                        "role": "Button",
+                        "label": "Third"
                       }
                     ]
                   },
                   {
-                    "id": "6420abb694f4167b",
+                    "id": "2b079b655f8aa24c",
+                    "role": "Label",
+                    "label": "ComboBox",
+                    "value": "ComboBox"
+                  },
+                  {
+                    "id": "3c88d0e1f72d6737",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "7f0277ec50b0aba9",
-                        "role": "GenericContainer",
-                        "children": [
-                          {
-                            "id": "2ae631bf94e55049",
-                            "role": "GenericContainer",
-                            "children": [
-                              {
-                                "id": "e20536b0f4e39d73",
-                                "role": "Label",
-                                "label": "Label",
-                                "value": "Label"
-                              },
-                              {
-                                "id": "d713be38ba8c13d4",
-                                "role": "Label",
-                                "value": "Welcome to the widget gallery!"
-                              },
-                              {
-                                "id": "48845bd87f76651b",
-                                "role": "Label",
-                                "label": "Hyperlink",
-                                "value": "Hyperlink"
-                              },
-                              {
-                                "id": "92ced92911317344",
-                                "role": "Label",
-                                "label": " egui on GitHub",
-                                "value": " egui on GitHub"
-                              },
-                              {
-                                "id": "4833857049026c6",
-                                "role": "Label",
-                                "label": "TextEdit",
-                                "value": "TextEdit"
-                              },
-                              {
-                                "id": "3e1593196b667852",
-                                "role": "TextInput",
-                                "value": ""
-                              },
-                              {
-                                "id": "d15f6c092f79ec9f",
-                                "role": "Label",
-                                "label": "Button",
-                                "value": "Button"
-                              },
-                              {
-                                "id": "ec63454b51548c53",
-                                "role": "Button",
-                                "label": "Click me!"
-                              },
-                              {
-                                "id": "c2ca8602f09cb9ba",
-                                "role": "Label",
-                                "label": "Link",
-                                "value": "Link"
-                              },
-                              {
-                                "id": "dc05be6ca66ea284",
-                                "role": "Label",
-                                "label": "Click me!",
-                                "value": "Click me!"
-                              },
-                              {
-                                "id": "60e3ea5d1c2a450",
-                                "role": "Label",
-                                "label": "Checkbox",
-                                "value": "Checkbox"
-                              },
-                              {
-                                "id": "938932354ca94638",
-                                "role": "CheckBox",
-                                "label": "Checkbox"
-                              },
-                              {
-                                "id": "dbbe90d172064b28",
-                                "role": "Label",
-                                "label": "RadioButton",
-                                "value": "RadioButton"
-                              },
-                              {
-                                "id": "2f6df56c77202968",
-                                "role": "GenericContainer",
-                                "children": [
-                                  {
-                                    "id": "acc74bcbe19f0ac0",
-                                    "role": "RadioButton",
-                                    "label": "First"
-                                  },
-                                  {
-                                    "id": "58f0d54234d605c0",
-                                    "role": "RadioButton",
-                                    "label": "Second"
-                                  },
-                                  {
-                                    "id": "8efe6e20358c9ada",
-                                    "role": "RadioButton",
-                                    "label": "Third"
-                                  }
-                                ]
-                              },
-                              {
-                                "id": "25a572e6899d34d3",
-                                "role": "Label",
-                                "label": "SelectableLabel",
-                                "value": "SelectableLabel"
-                              },
-                              {
-                                "id": "568243fd409a65c3",
-                                "role": "GenericContainer",
-                                "children": [
-                                  {
-                                    "id": "47d22251be010243",
-                                    "role": "Button",
-                                    "label": "First"
-                                  },
-                                  {
-                                    "id": "220d3af9e7df4bc2",
-                                    "role": "Button",
-                                    "label": "Second"
-                                  },
-                                  {
-                                    "id": "323785727c384a9c",
-                                    "role": "Button",
-                                    "label": "Third"
-                                  }
-                                ]
-                              },
-                              {
-                                "id": "2b079b655f8aa24c",
-                                "role": "Label",
-                                "label": "ComboBox",
-                                "value": "ComboBox"
-                              },
-                              {
-                                "id": "3c88d0e1f72d6737",
-                                "role": "GenericContainer",
-                                "children": [
-                                  {
-                                    "id": "4942ff2f85a1de48",
-                                    "role": "GenericContainer",
-                                    "children": [
-                                      {
-                                        "id": "b135874934b63953",
-                                        "role": "ComboBox",
-                                        "label": "Take your pick",
-                                        "value": "First"
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "id": "d2c2c7d0898dfe6a",
-                                    "role": "Label",
-                                    "value": "Take your pick"
-                                  }
-                                ]
-                              },
-                              {
-                                "id": "ba0be981da5b426",
-                                "role": "Label",
-                                "label": "Slider",
-                                "value": "Slider"
-                              },
-                              {
-                                "id": "45b2a96a25c8afc0",
-                                "role": "GenericContainer",
-                                "children": [
-                                  {
-                                    "id": "ec9c70ec4d94da3d",
-                                    "role": "Slider"
-                                  },
-                                  {
-                                    "id": "af8157f9885e74ae",
-                                    "role": "SpinButton",
-                                    "value": "42°"
-                                  }
-                                ]
-                              },
-                              {
-                                "id": "7d79ede951fde045",
-                                "role": "Label",
-                                "label": "DragValue",
-                                "value": "DragValue"
-                              },
-                              {
-                                "id": "e884cd07624df292",
-                                "role": "SpinButton",
-                                "value": "42"
-                              },
-                              {
-                                "id": "927864cfef6fdd45",
-                                "role": "Label",
-                                "label": "ProgressBar",
-                                "value": "ProgressBar"
-                              },
-                              {
-                                "id": "b9c03e36244c4659",
-                                "role": "ProgressIndicator"
-                              },
-                              {
-                                "id": "fc4ff5e5d8f0d688",
-                                "role": "Label",
-                                "label": "Color picker",
-                                "value": "Color picker"
-                              },
-                              {
-                                "id": "e1815cfac8761082",
-                                "role": "ColorWell"
-                              },
-                              {
-                                "id": "9023bbfe398d145",
-                                "role": "Label",
-                                "label": "Image",
-                                "value": "Image"
-                              },
-                              {
-                                "id": "6e50df357ebac861",
-                                "role": "Image"
-                              },
-                              {
-                                "id": "ce0c0e6ff28c3084",
-                                "role": "Label",
-                                "label": "Button with image",
-                                "value": "Button with image"
-                              },
-                              {
-                                "id": "28b278d32f7a7867",
-                                "role": "Button",
-                                "label": "Click me!"
-                              },
-                              {
-                                "id": "1aad4187894de02b",
-                                "role": "Label",
-                                "label": "Separator",
-                                "value": "Separator"
-                              },
-                              {
-                                "id": "e90263d4ce885d68",
-                                "role": "Label",
-                                "label": "CollapsingHeader",
-                                "value": "CollapsingHeader"
-                              },
-                              {
-                                "id": "3512107b17672758",
-                                "role": "GenericContainer",
-                                "children": [
-                                  {
-                                    "id": "18813c8724eae525",
-                                    "role": "Button",
-                                    "label": "Click to see what is hidden!"
-                                  }
-                                ]
-                              },
-                              {
-                                "id": "686218ec3bb411c4",
-                                "role": "Label",
-                                "label": "Custom widget",
-                                "value": "Custom widget"
-                              },
-                              {
-                                "id": "d0bd850a24bf4f07",
-                                "role": "CheckBox",
-                                "label": ""
-                              }
-                            ]
-                          }
-                        ]
+                        "id": "b135874934b63953",
+                        "role": "ComboBox",
+                        "label": "Take your pick",
+                        "value": "First"
+                      },
+                      {
+                        "id": "d2c2c7d0898dfe6a",
+                        "role": "Label",
+                        "value": "Take your pick"
                       }
                     ]
                   },
                   {
-                    "id": "5b551196491b6169",
+                    "id": "ba0be981da5b426",
+                    "role": "Label",
+                    "label": "Slider",
+                    "value": "Slider"
+                  },
+                  {
+                    "id": "45b2a96a25c8afc0",
                     "role": "GenericContainer",
                     "children": [
                       {
-                        "id": "153ea4aea6330eda",
-                        "role": "CheckBox",
-                        "label": "Visible"
+                        "id": "ec9c70ec4d94da3d",
+                        "role": "Slider"
                       },
                       {
-                        "id": "9a251ce41d6e49fb",
-                        "role": "CheckBox",
-                        "label": "Interactive"
-                      },
-                      {
-                        "id": "6d824f5e01408a93",
+                        "id": "af8157f9885e74ae",
                         "role": "SpinButton",
-                        "value": "1.00"
-                      },
-                      {
-                        "id": "f273f32e01c0bda0",
-                        "role": "Label",
-                        "value": "Opacity"
+                        "value": "42°"
                       }
                     ]
                   },
                   {
-                    "id": "f8c470f16956ce6a",
-                    "role": "GenericContainer",
-                    "children": [
-                      {
-                        "id": "ad5cb3e3dae2ef04",
-                        "role": "Label",
-                        "label": "https://docs.rs/egui/",
-                        "value": "https://docs.rs/egui/"
-                      },
-                      {
-                        "id": "5dc95be367fa42cd",
-                        "role": "Label",
-                        "label": "Source code of the widget gallery",
-                        "value": "Source code of the widget gallery"
-                      }
-                    ]
+                    "id": "7d79ede951fde045",
+                    "role": "Label",
+                    "label": "DragValue",
+                    "value": "DragValue"
+                  },
+                  {
+                    "id": "e884cd07624df292",
+                    "role": "SpinButton",
+                    "value": "42"
+                  },
+                  {
+                    "id": "927864cfef6fdd45",
+                    "role": "Label",
+                    "label": "ProgressBar",
+                    "value": "ProgressBar"
+                  },
+                  {
+                    "id": "b9c03e36244c4659",
+                    "role": "ProgressIndicator"
+                  },
+                  {
+                    "id": "fc4ff5e5d8f0d688",
+                    "role": "Label",
+                    "label": "Color picker",
+                    "value": "Color picker"
+                  },
+                  {
+                    "id": "e1815cfac8761082",
+                    "role": "ColorWell"
+                  },
+                  {
+                    "id": "9023bbfe398d145",
+                    "role": "Label",
+                    "label": "Image",
+                    "value": "Image"
+                  },
+                  {
+                    "id": "6e50df357ebac861",
+                    "role": "Image"
+                  },
+                  {
+                    "id": "ce0c0e6ff28c3084",
+                    "role": "Label",
+                    "label": "Button with image",
+                    "value": "Button with image"
+                  },
+                  {
+                    "id": "28b278d32f7a7867",
+                    "role": "Button",
+                    "label": "Click me!"
+                  },
+                  {
+                    "id": "1aad4187894de02b",
+                    "role": "Label",
+                    "label": "Separator",
+                    "value": "Separator"
+                  },
+                  {
+                    "id": "e90263d4ce885d68",
+                    "role": "Label",
+                    "label": "CollapsingHeader",
+                    "value": "CollapsingHeader"
+                  },
+                  {
+                    "id": "18813c8724eae525",
+                    "role": "Button",
+                    "label": "Click to see what is hidden!"
+                  },
+                  {
+                    "id": "686218ec3bb411c4",
+                    "role": "Label",
+                    "label": "Custom widget",
+                    "value": "Custom widget"
+                  },
+                  {
+                    "id": "d0bd850a24bf4f07",
+                    "role": "CheckBox",
+                    "label": ""
+                  }
+                ]
+              },
+              {
+                "id": "5b551196491b6169",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "153ea4aea6330eda",
+                    "role": "CheckBox",
+                    "label": "Visible"
+                  },
+                  {
+                    "id": "9a251ce41d6e49fb",
+                    "role": "CheckBox",
+                    "label": "Interactive"
+                  },
+                  {
+                    "id": "6d824f5e01408a93",
+                    "role": "SpinButton",
+                    "value": "1.00"
+                  },
+                  {
+                    "id": "f273f32e01c0bda0",
+                    "role": "Label",
+                    "value": "Opacity"
+                  }
+                ]
+              },
+              {
+                "id": "f8c470f16956ce6a",
+                "role": "GenericContainer",
+                "children": [
+                  {
+                    "id": "ad5cb3e3dae2ef04",
+                    "role": "Label",
+                    "label": "https://docs.rs/egui/",
+                    "value": "https://docs.rs/egui/"
+                  },
+                  {
+                    "id": "5dc95be367fa42cd",
+                    "role": "Label",
+                    "label": "Source code of the widget gallery",
+                    "value": "Source code of the widget gallery"
                   }
                 ]
               }
