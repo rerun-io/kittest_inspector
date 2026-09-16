@@ -12,7 +12,7 @@
 
 use accesskit_consumer::Tree;
 
-use crate::tree::{Exclusion, Query, QueryFilter, Widget, query};
+use crate::tree::{self, Exclusion, Query, QueryFilter, Widget, query};
 
 /// Logical size of the frame the tests lay out. Wide enough that nothing is clipped, which
 /// would otherwise show up as a `hidden` flag that differs between platforms.
@@ -198,10 +198,13 @@ fn a_long_label_is_cut_short_but_still_matchable() {
     let label = matched.first().expect("the long label matched");
     let text = label.value.as_deref().expect("a label's text is its value");
     assert!(
-        LONG_LABEL.starts_with(text.trim_end_matches('…')),
+        LONG_LABEL.starts_with(text.trim_end_matches(tree::TRUNCATION_MARKER)),
         "what came back is the start of the label: {text}"
     );
-    assert!(text.ends_with('…'), "and it is marked as cut: {text}");
+    assert!(
+        text.ends_with(tree::TRUNCATION_MARKER),
+        "and it is marked as cut: {text}"
+    );
     assert!(text.chars().count() < LONG_LABEL.chars().count());
     assert!(
         label.children.is_empty(),

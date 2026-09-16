@@ -120,7 +120,7 @@ expression: "query_app(&QueryFilter { limit: usize::MAX, ..Default::default() })
                   {
                     "id": "29da03ef98693066",
                     "role": "Label",
-                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame ha…"
+                    "value": "This paragraph is here to be long: it wraps over several lines in the central panel, so the frame ha […]"
                   },
                   {
                     "id": "41ef20283b896828",
