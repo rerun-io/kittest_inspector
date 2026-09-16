@@ -678,6 +678,7 @@ Conventions:
         "description": "A node in `query_tree`'s hierarchical result.\n\nOnly matching nodes appear; each one nests the matches found in its own subtree. A\nnon-matching node contributes its matches to its nearest matching ancestor, so a `children`\nentry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`NodeView`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_node` has the full detail.\n\nNodes that say nothing are dropped entirely — see [`TreeNode::is_noise`].",
         "properties": {
           "children": {
+            "description": "`default` keeps the derived schema honest: a leaf omits the field entirely.",
             "items": {
               "$ref": "#/$defs/TreeNode"
             },
@@ -720,8 +721,7 @@ Conventions:
           "id",
           "focused",
           "disabled",
-          "hidden",
-          "children"
+          "hidden"
         ],
         "type": "object"
       }

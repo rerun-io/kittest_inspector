@@ -45,11 +45,18 @@ pub struct TreeNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+
     pub focused: bool,
     pub disabled: bool,
     pub hidden: bool,
+
+    /// `default` keeps the derived schema honest: a leaf omits the field entirely.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Self>,
 }
 
@@ -545,19 +552,22 @@ mod tests {
 
     #[test]
     fn a_tree_node_serializes_without_its_empty_fields() {
+        fn keys(node: &TreeNode) -> Vec<String> {
+            let json = serde_json::to_value(node).expect("serialize");
+            json.as_object().expect("object").keys().cloned().collect()
+        }
+
         let nodes = query_all(&QueryFilter::default());
-        let json = serde_json::to_value(&nodes[0].children[0]).expect("serialize");
-        let keys: Vec<&str> = json
-            .as_object()
-            .expect("object")
-            .keys()
-            .map(String::as_str)
-            .collect();
+        let scaffold = &nodes[0].children[0];
         assert_eq!(
-            keys,
-            [
-                "children", "disabled", "focused", "hidden", "id", "label", "value"
-            ]
+            keys(scaffold),
+            ["children", "disabled", "focused", "hidden", "id"],
+            "no label, no value, no role"
+        );
+        assert_eq!(
+            keys(&scaffold.children[0]),
+            ["disabled", "focused", "hidden", "id", "label", "role"],
+            "a leaf carries no `children`"
         );
     }
 }
