@@ -12,7 +12,7 @@
 
 use accesskit_consumer::Tree;
 
-use crate::tree::{Query, QueryFilter, TreeNode, query};
+use crate::tree::{Exclusion, Query, QueryFilter, TreeNode, query};
 
 /// Logical size of the frame the tests lay out. Wide enough that nothing is clipped, which
 /// would otherwise show up as a `hidden` flag that differs between platforms.
@@ -207,6 +207,57 @@ fn a_long_label_is_cut_short_but_still_matchable() {
         label.children.is_empty(),
         "the per-line runs repeat the label, so they are folded into it"
     );
+}
+
+/// An exclusion takes a whole subtree with it: the chat panel's own text no longer answers a
+/// query meant for the app.
+#[test]
+fn an_excluded_panel_takes_its_text_with_it() {
+    let filter = |exclude| QueryFilter {
+        query: Query {
+            content_contains: Some("volume".to_owned()),
+            ..Default::default()
+        },
+        exclude,
+        ..Default::default()
+    };
+
+    let tree = demo_app_tree();
+    let unfiltered = query(&tree, &filter(None), 1.0);
+    assert!(
+        unfiltered
+            .iter()
+            .any(|node| node.value.as_deref() == Some("where is the volume slider?")),
+        "the chat's echo of the question is in the way"
+    );
+
+    // The panel itself carries no text, so it is excluded by the id of the node holding it.
+    let chat_panel = find_container_of(&query(&tree, &QueryFilter::default(), 1.0), "Chat")
+        .expect("the chat panel is in the tree");
+    let excluded = query(
+        &tree,
+        &filter(Some(Exclusion {
+            id: Some(chat_panel),
+            ..Default::default()
+        })),
+        1.0,
+    );
+    insta::assert_snapshot!(serde_json::to_string_pretty(&excluded).expect("serialize"));
+}
+
+/// The id of the nearest node above a `heading`, i.e. the container that holds that section.
+fn find_container_of(nodes: &[TreeNode], heading: &str) -> Option<String> {
+    nodes.iter().find_map(|node| {
+        let holds_heading = node
+            .children
+            .iter()
+            .any(|child| child.value.as_deref() == Some(heading));
+        if holds_heading {
+            Some(node.id.clone())
+        } else {
+            find_container_of(&node.children, heading)
+        }
+    })
 }
 
 /// Nothing an agent can act on should reach it without an `id` to act on it with, and the

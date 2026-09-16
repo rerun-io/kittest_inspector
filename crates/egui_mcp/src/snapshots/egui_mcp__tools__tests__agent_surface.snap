@@ -627,8 +627,52 @@ Conventions:
 
 {
   "name": "query_tree",
-  "description": "Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.\nNodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\nUse the returned `id` with `click`, `type_text`, or `get_node`.\nThe nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.\n`label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its node.\nEmpty scaffolding is dropped: a node with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.",
+  "description": "Walk the widget tree and return the nodes matching the filter, nested by ancestry: each node carries the matches from its own subtree in `children`.\nNodes in between that don't match are skipped, so a `children` entry is a descendant, not necessarily a direct child.\n`role`, if given, is a role name (e.g. `Button`, `Label`), matched case-insensitively; an unknown role errors with the roles present in the tree.\n`exclude` leaves a subtree out — pass a node `id`, or the same constraints the filter takes — and takes everything below it with it; use it to skip a panel whose text would otherwise answer every query.\nUse the returned `id` with `click`, `type_text`, or `get_node`.\nThe nodes are abridged — call `get_node` with an `id` for one node's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.\n`label` and `value` are cut short at 100 characters, marked with a trailing `…`; the filters still match against the whole text, so a phrase past the cut still finds its node.\nEmpty scaffolding is dropped: a node with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.",
   "inputSchema": {
+    "$defs": {
+      "Exclusion": {
+        "description": "A subtree to leave out of a query: whatever matches, plus everything below it.\n\nEither a node `id` or the same constraints a [`Query`] takes. An exclusion with neither set\nmatches nothing, rather than swallowing the whole tree.",
+        "properties": {
+          "content_contains": {
+            "description": "Case-insensitive substring match against *either* `label` or `value`. Prefer this when you\njust want \"the widget showing this text\" and don't care which field holds it — it's the\nmost robust choice across widget kinds.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "default": null,
+            "description": "Id of the node to leave out, from a previous query.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label_contains": {
+            "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "description": "Role name, e.g. `Button`, `Label`, `TextInput` (case-insensitive).\nAn unrecognized role is rejected with an error that lists the roles present in the tree.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_contains": {
+            "description": "Case-insensitive substring match against the node's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "content_contains": {
@@ -637,6 +681,17 @@ Conventions:
           "string",
           "null"
         ]
+      },
+      "exclude": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Exclusion"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "A subtree to leave out — e.g. the host's own agent panel, whose text would otherwise\nanswer every text query before the app under test does."
       },
       "label_contains": {
         "description": "Case-insensitive substring match against the node's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
