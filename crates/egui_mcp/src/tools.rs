@@ -618,7 +618,15 @@ impl Server {
     /// Defaults to 127.0.0.1:5719.
     /// Retries until `timeout_secs` elapses.
     /// On success the app-driving tools start working (they are always listed, but error until an app is attached).
-    #[tool]
+    #[tool(
+        title = "Attach to app",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn attach(
         &self,
         Parameters(args): Parameters<AttachArgs>,
@@ -643,7 +651,15 @@ impl Server {
 
     /// Disconnect from the attached app.
     /// App-driving tools remain available but return an error until `attach` is called again.
-    #[tool]
+    #[tool(
+        title = "Disconnect",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn disconnect(&self, _p: Parameters<EmptyArgs>) -> Result<CallToolResult, McpError> {
         if self.ui.lock().await.take().is_some() {
             Ok(CallToolResult::structured(json!({ "ok": true })))
@@ -653,7 +669,10 @@ impl Server {
     }
 
     /// Report whether an app is connected and its peer info.
-    #[tool]
+    #[tool(
+        title = "Connection status",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
     async fn status(&self, _p: Parameters<EmptyArgs>) -> Result<CallToolResult, McpError> {
         let guard = self.ui.lock().await;
         let body = match guard.as_ref() {
@@ -670,7 +689,15 @@ impl UiServer {
     /// Capture the current frame as a PNG screenshot.
     /// Defaults to logical-point resolution (`pixels_per_point: 1.0`) so pixels align with `click`/`widget_tree` coordinates; pass a higher `pixels_per_point` for detail, or `save_path` to also write it to disk.
     /// Requires the app window to be visible — a fully-occluded or minimized window can't render a frame to capture (notably on macOS), so the call times out; bring the window to the foreground first.
-    #[tool]
+    #[tool(
+        title = "Screenshot",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn screenshot(
         &self,
         Parameters(args): Parameters<ScreenshotArgs>,
@@ -705,7 +732,10 @@ impl UiServer {
     /// The widgets are abridged — call `get_widget` with an `id` for one widget's full detail, including its `bounds` (logical points, its center is where `click` lands), its parent, and its text in full.
     /// `label` and `value` are cut short at 100 characters, marked with a trailing ` […]`; the filters still match against the whole text, so a phrase past the cut still finds its widget.
     /// Empty scaffolding is dropped: a widget with no children, no `label`, no `value`, and no `role` (a `role` of `Unknown` is reported as none) never appears.
-    #[tool]
+    #[tool(
+        title = "Widget tree",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
     async fn widget_tree(
         &self,
         Parameters(filter): Parameters<QueryFilter>,
@@ -733,7 +763,10 @@ impl UiServer {
     /// This is the follow-up to `widget_tree`, which omits `bounds` and cuts long text short to stay compact.
     // Spelled-out `Result<Json<…>, ToolError>` (not the `ToolResult` alias) so `#[tool]` derives
     // the output schema — see `widget_tree`.
-    #[tool]
+    #[tool(
+        title = "Widget details",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
     async fn get_widget(
         &self,
         Parameters(args): Parameters<GetWidgetArgs>,
@@ -762,7 +795,15 @@ impl UiServer {
     /// Specify either a locator (`id` from `widget_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.
     /// `button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).
     /// `count: 2` → double-click, `3` → triple.
-    #[tool]
+    #[tool(
+        title = "Click",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn click(&self, Parameters(args): Parameters<ClickArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
         let button = args.button.to_egui();
@@ -802,7 +843,15 @@ impl UiServer {
 
     /// Move the pointer over a widget (or raw `pos`) without clicking.
     /// Tooltips and hover popups only appear after a short delay — follow with `wait_for` (e.g. its `min_steps`) to let them settle before reading the tree or screenshotting.
-    #[tool]
+    #[tool(
+        title = "Hover",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn hover(&self, Parameters(args): Parameters<HoverArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
         let (node_id, pos) = resolve_target(bridge, &args.target).await?;
@@ -816,7 +865,15 @@ impl UiServer {
 
     /// Send a mouse wheel scroll over a widget (or raw `pos`).
     /// `delta` is in logical points: positive Y scrolls down (reveals content below); positive X scrolls right.
-    #[tool]
+    #[tool(
+        title = "Scroll",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn scroll(&self, Parameters(args): Parameters<ScrollArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
         let (node_id, pos) = resolve_target(bridge, &args.target).await?;
@@ -846,7 +903,15 @@ impl UiServer {
     /// Primary-button drag from `start` to `end`.
     /// Each target accepts the same fields as `click`: locator (`id`/`content_contains`/`role`/`label_contains`/`value_contains`) or `pos: {x, y}`.
     /// `steps` controls how many intermediate pointer-move events are emitted between press and release.
-    #[tool]
+    #[tool(
+        title = "Drag",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn drag(&self, Parameters(args): Parameters<DragArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
         // Resolve both endpoints against one tree snapshot — no input happens between them.
@@ -903,7 +968,15 @@ impl UiServer {
     }
 
     /// Resize the app's viewport to the given logical-point dimensions.
-    #[tool]
+    #[tool(
+        title = "Resize viewport",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
     async fn resize(&self, Parameters(args): Parameters<ResizeArgs>) -> ToolResult<CallToolResult> {
         let bridge = self.bridge();
         bridge.resize(args.width, args.height).await?;
@@ -916,7 +989,10 @@ impl UiServer {
     /// Waits until at least `min_matches` visible widgets match the filter (when one is given) *and* at least `min_steps` frames have rendered since the call began.
     /// The text filter is `role` and/or one of `content_contains` (matches `label` or `value` — prefer this; e.g. monospace/`Label` text lives in `value`), `label_contains`, `value_contains`.
     /// Requires a filter (`content_contains`/`role`/`label_contains`/`value_contains`) or a non-zero `min_steps`.
-    #[tool]
+    #[tool(
+        title = "Wait for widgets",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
     async fn wait_for(
         &self,
         Parameters(args): Parameters<WaitForArgs>,
@@ -977,7 +1053,15 @@ impl UiServer {
 
     /// Type text into the currently focused widget.
     /// Optionally focus a widget first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an `AccessKit` focus request, not a click, so it won't move the cursor or clear an existing text selection.
-    #[tool]
+    #[tool(
+        title = "Type text",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn type_text(
         &self,
         Parameters(args): Parameters<TypeTextArgs>,
@@ -1021,7 +1105,15 @@ impl UiServer {
 
     /// Send a key press (down + up) to the focused widget.
     /// `key` is an egui key name such as `Backspace`, `Delete`, `Enter`, `Tab`, `A`–`Z`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `Escape`.
-    #[tool]
+    #[tool(
+        title = "Press key",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn press_key(
         &self,
         Parameters(args): Parameters<PressKeyArgs>,
@@ -1061,7 +1153,15 @@ impl UiServer {
     /// Results are emitted in execution order, interleaved: each step contributes one JSON text item followed by any image items it produced (e.g. screenshots).
     /// `batch` cannot be nested.
     /// Use this to act and observe in one call, e.g. a `click` then a `widget_tree` or `screenshot`.
-    #[tool]
+    #[tool(
+        title = "Batch",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
     async fn batch(
         &self,
         Parameters(args): Parameters<BatchArgs>,
@@ -1208,6 +1308,40 @@ mod tests {
         let tool = Server::new().get_tool(name).expect("a tool by that name");
         let args = args.as_object().expect("an object").clone();
         check_arguments(&tool.input_schema, Some(&args))
+    }
+
+    /// A client decides what to run unattended from `readOnlyHint`, so the set of tools
+    /// carrying it is worth pinning: exactly those that only read the app.
+    #[test]
+    fn only_the_reading_tools_are_marked_read_only() {
+        let server = Server::new();
+        let tools = server.tools();
+
+        let mut read_only: Vec<&str> = tools
+            .iter()
+            .filter(|tool| {
+                tool.annotations
+                    .as_ref()
+                    .and_then(|annotations| annotations.read_only_hint)
+                    .unwrap_or(false)
+            })
+            .map(|tool| tool.name.as_ref())
+            .collect();
+        read_only.sort_unstable();
+        // `screenshot` is not among them: `save_path` writes a file.
+        assert_eq!(
+            read_only,
+            ["get_widget", "status", "wait_for", "widget_tree"]
+        );
+
+        for tool in &tools {
+            assert!(tool.title.is_some(), "{} has no title", tool.name);
+            assert!(
+                tool.annotations.is_some(),
+                "{} has no annotations",
+                tool.name
+            );
+        }
     }
 
     /// A misspelled filter used to read as "no filter", which quietly matches every widget.
