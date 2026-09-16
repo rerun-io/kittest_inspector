@@ -599,6 +599,12 @@ mod tests {
         }
 
         let nodes = query_all(&QueryFilter::default());
+        assert_eq!(
+            keys(&nodes[0]),
+            ["children", "focused", "id", "role"],
+            "a flag that is true is still spelled out"
+        );
+
         let scaffold = &nodes[0].children[0];
         assert_eq!(
             keys(scaffold),
