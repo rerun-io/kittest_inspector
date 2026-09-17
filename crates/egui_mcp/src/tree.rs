@@ -278,8 +278,14 @@ impl Exclusion {
     }
 }
 
+/// What subset of the tree `widget_tree` walks, and how much of it comes back.
+///
+/// A default filter — no constraints, no `root`, no `exclude` — returns the whole visible app,
+/// up to `limit`. Every field narrows the result further; they combine with logical AND.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct QueryFilter {
+    /// Which widgets count as matches. An empty [`Query`] matches every widget, so the result
+    /// is the app's whole hierarchy rather than a search hit.
     #[serde(flatten)]
     pub query: Query,
 
@@ -293,9 +299,18 @@ pub struct QueryFilter {
     #[serde(default)]
     pub exclude: Option<Exclusion>,
 
+    /// Skip the widgets egui reports as hidden — scrolled out of view, or inside a collapsed
+    /// section. On by default: a hidden widget can't be clicked or read by a user, so it is
+    /// rarely the one an agent is looking for. Set it to `false` to see what a `ScrollArea` or
+    /// a closed `CollapsingHeader` is holding.
     #[serde(default = "default_true")]
     pub visible_only: bool,
 
+    /// Most widgets to return, counted over the whole forest and not per level. The default of
+    /// 200 keeps a whole-app query down to something an agent can read.
+    ///
+    /// Overflow is cut from the bottom up, so the top of the hierarchy always survives, and
+    /// each widget that lost children reports how many in its `omitted_children`.
     #[serde(default = "default_limit")]
     pub limit: usize,
 }
