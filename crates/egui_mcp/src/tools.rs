@@ -175,10 +175,7 @@ fn content_is_image(c: &ContentBlock) -> bool {
 /// Reject an argument the tool's schema doesn't declare.
 ///
 /// Serde ignores unknown keys, and `#[serde(flatten)]` rules out `deny_unknown_fields`, so
-/// without this a misspelled argument reads as "not set": `content_contain` silently becomes a
-/// filter that matches every widget, and a mistyped locator field quietly turns into "no
-/// locator". The tool's own input schema is the list of what it takes, so the check covers the
-/// flattened fields and the nested argument objects alike.
+/// without this a misspelled argument is silently ignored.
 fn check_arguments(schema: &JsonObject, arguments: Option<&JsonObject>) -> Result<(), String> {
     let Some(arguments) = arguments else {
         return Ok(());
@@ -1144,7 +1141,6 @@ Acting and verifying:
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
 
 Conventions:
-- An argument a tool doesn't take is an error, not something ignored, and the error lists the ones it does take. So a typo tells you, instead of reading as "not set" — which for a filter would mean "match everything".
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a widget's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
 impl ServerHandler for Server {
