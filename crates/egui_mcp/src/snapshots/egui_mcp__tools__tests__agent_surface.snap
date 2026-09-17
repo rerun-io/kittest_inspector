@@ -998,6 +998,7 @@ Conventions:
       },
       "limit": {
         "default": 200,
+        "description": "Most widgets to return, counted over the whole forest and not per level. The default of\n200 keeps a whole-app query down to something an agent can read.\n\nOverflow is cut from the bottom up, so the top of the hierarchy always survives, and\neach widget that lost children reports how many in its `omitted_children`.",
         "format": "uint",
         "minimum": 0,
         "type": "integer"
@@ -1026,6 +1027,7 @@ Conventions:
       },
       "visible_only": {
         "default": true,
+        "description": "Skip the widgets egui reports as hidden — scrolled out of view, or inside a collapsed\nsection. On by default: a hidden widget can't be clicked or read by a user, so it is\nrarely the one an agent is looking for. Set it to `false` to see what a `ScrollArea` or\na closed `CollapsingHeader` is holding.",
         "type": "boolean"
       }
     },
