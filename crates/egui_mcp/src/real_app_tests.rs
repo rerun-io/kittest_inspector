@@ -237,8 +237,7 @@ fn get_widget_returns_the_text_the_tree_cut_short() {
         "the tree cut it short: {cut}"
     );
 
-    let id = tree::parse_id(&label.id).expect("the tree's own id parses");
-    let node = tree::resolve_unique(&app_tree, &tree::Locator::Id { id }, 1.0)
+    let node = tree::resolve_unique(&app_tree, &tree::Locator::Id { id: label.id }, 1.0)
         .expect("the id the tree just handed out resolves");
     let full = tree::widget_detail(&node, 1.0)
         .value
@@ -297,14 +296,14 @@ fn an_excluded_panel_takes_its_text_with_it() {
 }
 
 /// The id of the nearest node above a `heading`, i.e. the container that holds that section.
-fn find_container_of(nodes: &[Widget], heading: &str) -> Option<String> {
+fn find_container_of(nodes: &[Widget], heading: &str) -> Option<tree::Id> {
     nodes.iter().find_map(|node| {
         let holds_heading = node
             .children
             .iter()
             .any(|child| child.value.as_deref() == Some(heading));
         if holds_heading {
-            Some(node.id.clone())
+            Some(node.id)
         } else {
             find_container_of(&node.children, heading)
         }
@@ -317,7 +316,6 @@ fn find_container_of(nodes: &[Widget], heading: &str) -> Option<String> {
 fn every_returned_node_is_actionable() {
     fn check(nodes: &[Widget]) {
         for node in nodes {
-            assert!(!node.id.is_empty(), "every node is addressable");
             assert!(
                 node.role.is_some()
                     || node.label.is_some()

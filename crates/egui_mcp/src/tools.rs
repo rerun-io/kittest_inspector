@@ -52,7 +52,7 @@ use serde_json::{Value, json};
 use tokio::sync::Mutex;
 
 use crate::bridge::{Bridge, TreeSnapshot};
-use crate::tree::{self, Locator, Query, QueryFilter, Widget, WidgetDetail};
+use crate::tree::{self, Id, Locator, Query, QueryFilter, Widget, WidgetDetail};
 
 // ---------------------------------------------------------------------------------------
 // UiServer + Server
@@ -281,7 +281,7 @@ type ToolResult<T> = Result<T, ToolError>;
 pub struct Target {
     /// Widget id from `widget_tree`.
     #[serde(default)]
-    pub id: Option<String>,
+    pub id: Option<Id>,
 
     /// Widget-matching constraints (`role` and/or a text predicate); see `widget_tree`.
     #[serde(flatten)]
@@ -300,17 +300,14 @@ pub struct Pos2Lit {
 
 impl Target {
     fn as_locator(&self) -> Option<Locator> {
-        Locator::from_fields(self.id.as_deref(), self.query.clone())
+        Locator::from_fields(self.id, self.query.clone())
     }
 }
 
 /// Resolve a [`Target`] to an optional widget id + a logical-point position, fetching a fresh
 /// tree first. Use [`resolve_in_tree`] directly when resolving several targets against one
 /// snapshot (e.g. a drag's start and end).
-async fn resolve_target(
-    bridge: &Bridge,
-    target: &Target,
-) -> ToolResult<(Option<String>, egui::Pos2)> {
+async fn resolve_target(bridge: &Bridge, target: &Target) -> ToolResult<(Option<Id>, egui::Pos2)> {
     // A raw `pos` target needs no tree.
     if let Some(p) = target.pos {
         return Ok((None, egui::Pos2::new(p.x, p.y)));
@@ -320,10 +317,7 @@ async fn resolve_target(
 }
 
 /// Resolve a [`Target`] against an already-fetched tree snapshot.
-fn resolve_in_tree(
-    snap: &TreeSnapshot,
-    target: &Target,
-) -> ToolResult<(Option<String>, egui::Pos2)> {
+fn resolve_in_tree(snap: &TreeSnapshot, target: &Target) -> ToolResult<(Option<Id>, egui::Pos2)> {
     if let Some(p) = target.pos {
         return Ok((None, egui::Pos2::new(p.x, p.y)));
     }
@@ -396,7 +390,7 @@ fn default_pixels_per_point() -> f32 {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetWidgetArgs {
     /// Widget id, as returned by `widget_tree`.
-    pub id: String,
+    pub id: Id,
 }
 
 #[derive(Debug, Default, Deserialize, JsonSchema)]
@@ -566,7 +560,7 @@ pub struct TypeTextArgs {
     /// Optional focus target: widget id from `widget_tree` to focus before typing.
     /// Omit all locator fields to type into whatever is currently focused.
     #[serde(default)]
-    pub id: Option<String>,
+    pub id: Option<Id>,
 
     /// Optional focus target by match (`content_contains` and/or `role`/`label_contains`/`value_contains`);
     /// see `widget_tree`. Omit all locator fields to type into whatever is currently focused.
@@ -739,13 +733,7 @@ impl UiServer {
         Parameters(args): Parameters<GetWidgetArgs>,
     ) -> Result<Json<GetWidgetResult>, ToolError> {
         let bridge = self.bridge();
-        let id = tree::parse_id(&args.id).ok_or_else(|| {
-            format!(
-                "invalid id `{}` — pass an `id` exactly as `widget_tree` returned it",
-                args.id
-            )
-        })?;
-        let locator = Locator::Id { id };
+        let locator = Locator::Id { id: args.id };
         let snap = bridge.fetch_tree().await?;
         let ppp = snap.pixels_per_point;
         // `get_widget` is a lookup, not an action: a missing id is `null`, not an error.
@@ -985,7 +973,7 @@ impl UiServer {
         let bridge = self.bridge();
         // Optionally focus a target first. Unlike a click, an AccessKit focus request doesn't
         // move the text cursor or reset the selection.
-        let focused_id = match Locator::from_fields(args.id.as_deref(), args.query.clone()) {
+        let focused_id = match Locator::from_fields(args.id, args.query.clone()) {
             Some(locator) => {
                 let snap = bridge.fetch_tree().await?;
                 if let Some(role) = &args.query.role {
@@ -999,12 +987,12 @@ impl UiServer {
                         accesskit::ActionRequest {
                             action: accesskit::Action::Focus,
                             target_tree: accesskit::TreeId::ROOT,
-                            target_node: accesskit::NodeId(id),
+                            target_node: accesskit::NodeId(id.0),
                             data: None,
                         },
                     )])
                     .await?;
-                Some(id.to_string())
+                Some(id)
             }
             None => None,
         };

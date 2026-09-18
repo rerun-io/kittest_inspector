@@ -109,6 +109,11 @@ Conventions:
   "description": "Click the center of a widget's bounding box, or a raw `pos` in logical points.\nSpecify either a locator (`id` from `widget_tree`, `role`, or a text match — prefer `content_contains`, which matches `label` or `value`; `label_contains`/`value_contains` match just one field) or `pos: { x, y }`.\n`button` defaults to `primary` (accepts `primary`/`secondary`/`middle`/`extra1`/`extra2`, or aliases `left`/`right`).\n`count: 2` → double-click, `3` → triple.",
   "inputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "PointerButtonArg": {
         "description": "Which mouse button a `click`/`drag` uses. `left`/`right` are accepted as aliases for\n`primary`/`secondary`.",
         "enum": [
@@ -186,12 +191,16 @@ Conventions:
         "type": "integer"
       },
       "id": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Id"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
-        "description": "Widget id from `widget_tree`.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "description": "Widget id from `widget_tree`."
       },
       "label_contains": {
         "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -251,6 +260,11 @@ Conventions:
   "description": "Primary-button drag from `start` to `end`.\nEach target accepts the same fields as `click`: locator (`id`/`content_contains`/`role`/`label_contains`/`value_contains`) or `pos: {x, y}`.\n`steps` controls how many intermediate pointer-move events are emitted between press and release.",
   "inputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "Pos2Lit": {
         "properties": {
           "x": {
@@ -305,12 +319,16 @@ Conventions:
             ]
           },
           "id": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Widget id from `widget_tree`.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "Widget id from `widget_tree`."
           },
           "label_contains": {
             "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -380,11 +398,18 @@ Conventions:
   "name": "get_widget",
   "description": "Return a single widget by id (from `widget_tree`), in full detail: its `bounds` in logical points, its `parent_id`, its state, and its `label`/`value` untruncated.\nThis is the follow-up to `widget_tree`, which omits `bounds` and cuts long text short to stay compact.",
   "inputSchema": {
+    "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      }
+    },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "id": {
-        "description": "Widget id, as returned by `widget_tree`.",
-        "type": "string"
+        "$ref": "#/$defs/Id",
+        "description": "Widget id, as returned by `widget_tree`."
       }
     },
     "required": [
@@ -394,6 +419,11 @@ Conventions:
   },
   "outputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "RectF": {
         "properties": {
           "h": {
@@ -443,8 +473,8 @@ Conventions:
             "type": "boolean"
           },
           "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_widget`.",
-            "type": "string"
+            "$ref": "#/$defs/Id",
+            "description": "Node id, used with `click`, `type_text`, and `get_widget`."
           },
           "label": {
             "type": [
@@ -453,9 +483,13 @@ Conventions:
             ]
           },
           "parent_id": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Id"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "role": {
@@ -502,6 +536,11 @@ Conventions:
   "description": "Move the pointer over a widget (or raw `pos`) without clicking.\nTooltips and hover popups only appear after a short delay — follow with `wait_for` (e.g. its `min_steps`) to let them settle before reading the tree or screenshotting.",
   "inputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "Pos2Lit": {
         "properties": {
           "x": {
@@ -530,12 +569,16 @@ Conventions:
         ]
       },
       "id": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Id"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
-        "description": "Widget id from `widget_tree`.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "description": "Widget id from `widget_tree`."
       },
       "label_contains": {
         "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -685,6 +728,11 @@ Conventions:
   "description": "Send a mouse wheel scroll over a widget (or raw `pos`).\n`delta` is in logical points: positive Y scrolls down (reveals content below); positive X scrolls right.",
   "inputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "Pos2Lit": {
         "properties": {
           "x": {
@@ -743,12 +791,16 @@ Conventions:
         "description": "Logical points.\nPositive Y scrolls down (reveals content below); positive X scrolls right."
       },
       "id": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Id"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
-        "description": "Widget id from `widget_tree`.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "description": "Widget id from `widget_tree`."
       },
       "label_contains": {
         "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -810,6 +862,13 @@ Conventions:
   "name": "type_text",
   "description": "Type text into the currently focused widget.\nOptionally focus a widget first (by `id`, `role`, or a text match — `content_contains`/`label_contains`/`value_contains`) — this uses an `AccessKit` focus request, not a click, so it won't move the cursor or clear an existing text selection.",
   "inputSchema": {
+    "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      }
+    },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {
       "content_contains": {
@@ -820,12 +879,16 @@ Conventions:
         ]
       },
       "id": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Id"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
-        "description": "Optional focus target: widget id from `widget_tree` to focus before typing.\nOmit all locator fields to type into whatever is currently focused.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "description": "Optional focus target: widget id from `widget_tree` to focus before typing.\nOmit all locator fields to type into whatever is currently focused."
       },
       "label_contains": {
         "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -937,12 +1000,16 @@ Conventions:
             ]
           },
           "id": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Id of the widget to leave out, from a previous query.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "Id of the widget to leave out, from a previous query."
           },
           "label_contains": {
             "description": "Case-insensitive substring match against the widget's `label` (its accessible name) only.\nNote that `Label`/monospace widgets carry their text in `value`, not `label` — for those,\nuse `content_contains` (or `value_contains`).",
@@ -967,6 +1034,11 @@ Conventions:
           }
         },
         "type": "object"
+      },
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1011,12 +1083,16 @@ Conventions:
         ]
       },
       "root": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Id"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
-        "description": "Walk this widget's subtree instead of the whole app — the way to see the children a\n`limit` left out, by passing the id of the widget that reported `omitted_children`.",
-        "type": [
-          "string",
-          "null"
-        ]
+        "description": "Walk this widget's subtree instead of the whole app — the way to see the children a\n`limit` left out, by passing the id of the widget that reported `omitted_children`."
       },
       "value_contains": {
         "description": "Case-insensitive substring match against the widget's `value` only (e.g. a text field's\ncontents, or a `Label`'s text).",
@@ -1035,6 +1111,11 @@ Conventions:
   },
   "outputSchema": {
     "$defs": {
+      "Id": {
+        "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        "pattern": "^[0-9a-fA-F]{1,16}$",
+        "type": "string"
+      },
       "Widget": {
         "description": "A widget in `widget_tree`'s hierarchical result.\n\nOnly matching widgets appear; each one nests the matches found in its own subtree. A\nnon-matching widget contributes its matches to its nearest matching ancestor, so a\n`children` entry is not necessarily a direct child in the app's tree.\n\nDeliberately leaner than [`WidgetDetail`]: a whole tree of `bounds` is a lot of numbers for an\nagent to read past, and actions take an `id` anyway. `get_widget` has the full detail.\n\nA widget that says nothing — no children, no `label`, no `value` and no role — is dropped\nentirely, as is a `TextRun` that only repeats its parent's text.\n\n`label` and `value` are cut short at [`MAX_TEXT_CHARS`], marked with a trailing\n[`TRUNCATION_MARKER`].",
         "properties": {
@@ -1056,8 +1137,8 @@ Conventions:
             "type": "boolean"
           },
           "id": {
-            "description": "Node id, used with `click`, `type_text`, and `get_widget`.",
-            "type": "string"
+            "$ref": "#/$defs/Id",
+            "description": "Node id, used with `click`, `type_text`, and `get_widget`."
           },
           "label": {
             "type": [

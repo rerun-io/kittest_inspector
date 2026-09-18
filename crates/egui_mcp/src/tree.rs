@@ -32,10 +32,61 @@ pub const MAX_TEXT_CHARS: usize = 100;
 /// an ellipsis the app itself drew.
 pub const TRUNCATION_MARKER: &str = " […]";
 
+/// A widget id: the original `accesskit::NodeId`, written as lower-case hex with no prefix.
+///
+/// Hex keeps ids short, which matters because a `widget_tree` result is mostly ids. The type
+/// exists so a malformed id is rejected where it is read, rather than silently becoming "no
+/// id" — a mistyped `exclude.id` used to leave the subtree in the result, and say nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Id(pub u64);
+
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0)
+    }
+}
+
+impl std::str::FromStr for Id {
+    type Err = String;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        u64::from_str_radix(text.trim(), 16).map(Self).map_err(|err| {
+            format!("invalid widget id `{text}` ({err}) — pass an `id` exactly as `widget_tree` returned it")
+        })
+    }
+}
+
+impl Serialize for Id {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Id {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        text.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+impl JsonSchema for Id {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Id".into()
+    }
+
+    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{1,16}$",
+            "description": "Widget id as `widget_tree` reports it: lower-case hex, no prefix.",
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct WidgetDetail {
     /// Node id, used with `click`, `type_text`, and `get_widget`.
-    pub id: String,
+    pub id: Id,
     pub role: String,
     pub label: Option<String>,
     pub value: Option<String>,
@@ -43,7 +94,7 @@ pub struct WidgetDetail {
     pub focused: bool,
     pub disabled: bool,
     pub hidden: bool,
-    pub parent_id: Option<String>,
+    pub parent_id: Option<Id>,
 }
 
 /// A widget in `widget_tree`'s hierarchical result.
@@ -63,7 +114,7 @@ pub struct WidgetDetail {
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct Widget {
     /// Node id, used with `click`, `type_text`, and `get_widget`.
-    pub id: String,
+    pub id: Id,
 
     /// Omitted for a role of `Unknown`, which carries no information.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -260,7 +311,7 @@ impl Query {
 pub struct Exclusion {
     /// Id of the widget to leave out, from a previous query.
     #[serde(default)]
-    pub id: Option<String>,
+    pub id: Option<Id>,
 
     #[serde(flatten)]
     pub query: Query,
@@ -269,7 +320,7 @@ pub struct Exclusion {
 impl Exclusion {
     /// Does `node` root a subtree the caller asked to leave out?
     fn matches(&self, node: &Node<'_>) -> bool {
-        if let Some(id) = self.id.as_deref().and_then(parse_id)
+        if let Some(id) = self.id
             && accesskit_id(node) == id
         {
             return true;
@@ -292,7 +343,7 @@ pub struct QueryFilter {
     /// Walk this widget's subtree instead of the whole app — the way to see the children a
     /// `limit` left out, by passing the id of the widget that reported `omitted_children`.
     #[serde(default)]
-    pub root: Option<String>,
+    pub root: Option<Id>,
 
     /// A subtree to leave out — e.g. the host's own agent panel, whose text would otherwise
     /// answer every text query before the app under test does.
@@ -345,10 +396,7 @@ pub fn query(
     pixels_per_point: f32,
 ) -> Result<Vec<Widget>, String> {
     let root = match &filter.root {
-        Some(id) => {
-            let id = parse_id(id).ok_or_else(|| format!("invalid `root` id `{id}`"))?;
-            resolve_unique(tree, &Locator::Id { id }, pixels_per_point)?
-        }
+        Some(id) => resolve_unique(tree, &Locator::Id { id: *id }, pixels_per_point)?,
         None => tree.state().root(),
     };
     let mut nodes = walk(&root, filter, pixels_per_point);
@@ -559,7 +607,7 @@ fn contains_ci(hay: &str, needle: &str) -> bool {
 
 pub fn widget_detail(node: &Node<'_>, pixels_per_point: f32) -> WidgetDetail {
     WidgetDetail {
-        id: format_id(accesskit_id(node)),
+        id: accesskit_id(node),
         role: format!("{:?}", node.role()),
         label: node.label(),
         value: node.value(),
@@ -569,7 +617,7 @@ pub fn widget_detail(node: &Node<'_>, pixels_per_point: f32) -> WidgetDetail {
         focused: node.is_focused_in_tree(),
         disabled: node.is_disabled(),
         hidden: node.is_hidden(),
-        parent_id: node.parent().map(|p| format_id(accesskit_id(&p))),
+        parent_id: node.parent().map(|p| accesskit_id(&p)),
     }
 }
 
@@ -598,37 +646,25 @@ fn to_widget(node: &Node<'_>, children: Vec<Widget>, pixels_per_point: f32) -> W
     }
 }
 
-/// Format a node id the way the tools expose it: lower-case hex, no prefix.
-///
-/// Hex keeps the ids short, which matters because a `widget_tree` result is mostly ids.
-pub fn format_id(id: u64) -> String {
-    format!("{id:x}")
-}
-
-/// Parse a node id as produced by [`format_id`].
-pub fn parse_id(id: &str) -> Option<u64> {
-    u64::from_str_radix(id.trim(), 16).ok()
-}
-
-/// Project a consumer node to its original `accesskit::NodeId` as a `u64`.
-pub fn accesskit_id(node: &Node<'_>) -> u64 {
+/// Project a consumer node to its original `accesskit::NodeId`.
+pub fn accesskit_id(node: &Node<'_>) -> Id {
     let (local, _tree) = node.locate();
-    local.0
+    Id(local.0)
 }
 
 /// A resolved lookup target: a specific node `id`, or a role/text match.
 /// Built directly by the tools from a `Target` — never deserialized.
 #[derive(Debug, Clone)]
 pub enum Locator {
-    Id { id: u64 },
+    Id { id: Id },
     Match { query: Query },
 }
 
 impl Locator {
-    /// Build a locator from raw tool fields: a parseable `id` wins, else the `query` constraints.
+    /// Build a locator from raw tool fields: an `id` wins, else the `query` constraints.
     /// Returns `None` when neither an `id` nor any `query` constraint is set.
-    pub fn from_fields(id: Option<&str>, query: Query) -> Option<Self> {
-        if let Some(id) = id.and_then(parse_id) {
+    pub fn from_fields(id: Option<Id>, query: Query) -> Option<Self> {
+        if let Some(id) = id {
             return Some(Self::Id { id });
         }
         if !query.is_empty() {
@@ -658,7 +694,7 @@ pub fn resolve_unique<'a>(
         Locator::Id { id } => {
             let mut found = Vec::new();
             find_all(&root, &|n| accesskit_id(n) == *id, &mut found);
-            one(found, pixels_per_point, &format!("id `{}`", format_id(*id)))
+            one(found, pixels_per_point, &format!("id `{id}`"))
         }
         Locator::Match { query } => {
             let filter = QueryFilter {
@@ -779,18 +815,18 @@ mod tests {
         let nodes = query_all(&QueryFilter::default());
         assert_eq!(nodes.len(), 1, "one root");
         let root = &nodes[0];
-        assert_eq!(root.id, "1");
+        assert_eq!(root.id, Id(0x1));
         assert_eq!(root.role.as_deref(), Some("Window"));
         // `noise` says nothing, so it's gone; `wrapper` collapses into the link it held;
         // `scaffold` stays, because it holds two things.
-        let ids: Vec<&str> = root.children.iter().map(|n| n.id.as_str()).collect();
+        let ids: Vec<String> = root.children.iter().map(|n| n.id.to_string()).collect();
         assert_eq!(
             ids,
             ["2", "8", "ff", "5"],
             "`8` is the link, standing where its wrapper did"
         );
         assert_eq!(root.children[0].role, None, "`Unknown` is omitted");
-        assert_eq!(root.children[0].children[0].id, "3");
+        assert_eq!(root.children[0].children[0].id, Id(0x3));
         assert_eq!(count(&nodes), 7);
     }
 
@@ -804,7 +840,11 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(nodes.len(), 1);
-        assert_eq!(nodes[0].id, "3", "the button, not its scaffold or the root");
+        assert_eq!(
+            nodes[0].id,
+            Id(0x3),
+            "the button, not its scaffold or the root"
+        );
         assert!(nodes[0].children.is_empty());
     }
 
@@ -812,7 +852,7 @@ mod tests {
     fn a_container_holding_one_thing_and_saying_nothing_collapses() {
         let nodes = query_all(&QueryFilter::default());
         let ids = |nodes: &[Widget]| -> Vec<String> {
-            nodes.iter().map(|node| node.id.clone()).collect()
+            nodes.iter().map(|node| node.id.to_string()).collect()
         };
         assert!(
             !ids(&nodes[0].children).contains(&"7".to_owned()),
@@ -845,7 +885,7 @@ mod tests {
         // `scaffold` is excluded, so the button and the check box below it go too, though
         // neither matches the exclusion itself. Only the link is left, whose own wrapper is a
         // `GenericContainer` rather than `Unknown`.
-        let ids: Vec<&str> = nodes[0].children.iter().map(|n| n.id.as_str()).collect();
+        let ids: Vec<String> = nodes[0].children.iter().map(|n| n.id.to_string()).collect();
         assert_eq!(
             ids,
             ["8"],
@@ -853,21 +893,38 @@ mod tests {
         );
     }
 
+    /// A mistyped id used to read as "no id": `exclude` quietly matched nothing and left the
+    /// subtree in the result, and the caller was never told. [`Id`] rejects it where it is read.
+    #[test]
+    fn a_malformed_id_is_an_error_rather_than_no_id() {
+        let err = serde_json::from_str::<QueryFilter>(r#"{"exclude": {"id": "not-hex"}}"#)
+            .expect_err("`not-hex` is not an id");
+        assert!(err.to_string().contains("invalid widget id"), "{err}");
+
+        // `root` and the tools' own `id` fields read the same way.
+        let err = serde_json::from_str::<QueryFilter>(r#"{"root": "0x12ab"}"#)
+            .expect_err("the `0x` prefix is not part of the format");
+        assert!(err.to_string().contains("invalid widget id"), "{err}");
+
+        let filter = serde_json::from_str::<QueryFilter>(r#"{"root": "12ab"}"#).expect("plain hex");
+        assert_eq!(filter.root, Some(Id(0x12ab)));
+    }
+
     #[test]
     fn a_root_walks_one_subtree_and_a_missing_one_is_an_error() {
         let nodes = query_all(&QueryFilter {
             // `scaffold`, which holds the button and the check box.
-            root: Some("2".to_owned()),
+            root: Some(Id(0x2)),
             ..Default::default()
         });
         assert_eq!(count(&nodes), 3, "the subtree, not the app");
-        assert_eq!(nodes[0].id, "2");
+        assert_eq!(nodes[0].id, Id(0x2));
         assert_eq!(nodes[0].children[0].label.as_deref(), Some("OK"));
 
         let err = query(
             &test_tree(),
             &QueryFilter {
-                root: Some("dead".to_owned()),
+                root: Some(Id(0xdead)),
                 ..Default::default()
             },
             1.0,
