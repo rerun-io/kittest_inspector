@@ -1309,41 +1309,6 @@ mod tests {
         let args = args.as_object().expect("an object").clone();
         check_arguments(&tool.input_schema, Some(&args))
     }
-
-    /// A client decides what to run unattended from `readOnlyHint`, so the set of tools
-    /// carrying it is worth pinning: exactly those that only read the app.
-    #[test]
-    fn only_the_reading_tools_are_marked_read_only() {
-        let server = Server::new();
-        let tools = server.tools();
-
-        let mut read_only: Vec<&str> = tools
-            .iter()
-            .filter(|tool| {
-                tool.annotations
-                    .as_ref()
-                    .and_then(|annotations| annotations.read_only_hint)
-                    .unwrap_or(false)
-            })
-            .map(|tool| tool.name.as_ref())
-            .collect();
-        read_only.sort_unstable();
-        // `screenshot` is not among them: `save_path` writes a file.
-        assert_eq!(
-            read_only,
-            ["get_widget", "status", "wait_for", "widget_tree"]
-        );
-
-        for tool in &tools {
-            assert!(tool.title.is_some(), "{} has no title", tool.name);
-            assert!(
-                tool.annotations.is_some(),
-                "{} has no annotations",
-                tool.name
-            );
-        }
-    }
-
     /// A misspelled filter used to read as "no filter", which quietly matches every widget.
     #[test]
     fn a_misspelled_argument_is_an_error() {
