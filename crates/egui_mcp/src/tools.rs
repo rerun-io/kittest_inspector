@@ -1309,6 +1309,7 @@ mod tests {
         let args = args.as_object().expect("an object").clone();
         check_arguments(&tool.input_schema, Some(&args))
     }
+
     /// A misspelled filter used to read as "no filter", which quietly matches every widget.
     #[test]
     fn a_misspelled_argument_is_an_error() {
