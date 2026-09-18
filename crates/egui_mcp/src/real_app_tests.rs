@@ -1,4 +1,4 @@
-//! `query_tree` run against a real egui frame.
+//! `widget_tree` run against a real egui frame.
 //!
 //! The hand-built trees in [`crate::tree`]'s tests pin one rule each, on a tree of five nodes.
 //! This module builds a small but ordinary app — panels, a heading, buttons, a text field, a
@@ -7,12 +7,12 @@
 //! output: the containers it emits, where it puts a widget's text, and how deep the nesting
 //! gets.
 //!
-//! The snapshots carry no positions (a [`TreeNode`] has no bounds), so they don't move with
+//! The snapshots carry no positions (a [`Widget`] has no bounds), so they don't move with
 //! fonts or platform.
 
 use accesskit_consumer::Tree;
 
-use crate::tree::{Query, QueryFilter, TreeNode, query};
+use crate::tree::{self, Exclusion, Query, QueryFilter, Widget, query};
 
 /// Logical size of the frame the tests lay out. Wide enough that nothing is clipped, which
 /// would otherwise show up as a `hidden` flag that differs between platforms.
@@ -125,7 +125,7 @@ fn demo_app_tree() -> Tree {
 }
 
 fn query_app(filter: &QueryFilter) -> String {
-    let nodes = query(&demo_app_tree(), filter, 1.0);
+    let nodes = query(&demo_app_tree(), filter, 1.0).expect("no missing `root`");
     serde_json::to_string_pretty(&nodes).expect("serialize")
 }
 
@@ -142,7 +142,7 @@ fn the_demo_app_on_screen() {
     harness.snapshot("demo_app");
 }
 
-/// The whole app, the way `query_tree` with no filter hands it to an agent.
+/// The whole app, the way `widget_tree` with no filter hands it to an agent.
 ///
 /// Without a `limit`, so the snapshot stays the whole picture — what `limit` does to it is its
 /// own test.
@@ -179,28 +179,47 @@ fn one_widget_by_its_text() {
     }));
 }
 
-/// A wrapped label reaches the agent whole: egui splits it into one `TextRun` per line, but the
-/// `Label` above them still carries the entire string, so nothing is truncated on the way out.
+/// A long label is cut short, but stays findable: the filters match the whole text, so a phrase
+/// from past the cut still resolves to the node that holds it.
 #[test]
-fn a_long_label_arrives_whole() {
-    fn find<'a>(nodes: &'a [TreeNode], value: &str) -> Option<&'a TreeNode> {
-        nodes.iter().find_map(|node| {
-            (node.value.as_deref() == Some(value))
-                .then_some(node)
-                .or_else(|| find(&node.children, value))
-        })
-    }
-
-    let whole_tree = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
-    let label = find(&whole_tree, LONG_LABEL).expect("the long label is in the tree, in full");
-    assert!(
-        label.children.len() > 1,
-        "the text wrapped, so it arrives as several runs below the label"
-    );
-
-    // And a phrase from the middle of it finds that same label, not just the run it landed in.
+fn a_long_label_is_cut_short_but_still_matchable() {
     let matched = query(
         &demo_app_tree(),
+        &QueryFilter {
+            query: Query {
+                // Deep into the paragraph, well past where the text is cut.
+                content_contains: Some("every word of it".to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        1.0,
+    )
+    .expect("no missing `root`");
+    let label = matched.first().expect("the long label matched");
+    let text = label.value.as_deref().expect("a label's text is its value");
+    assert!(
+        LONG_LABEL.starts_with(text.trim_end_matches(tree::TRUNCATION_MARKER)),
+        "what came back is the start of the label: {text}"
+    );
+    assert!(
+        text.ends_with(tree::TRUNCATION_MARKER),
+        "and it is marked as cut: {text}"
+    );
+    assert!(text.chars().count() < LONG_LABEL.chars().count());
+    assert!(
+        label.children.is_empty(),
+        "the per-line runs repeat the label, so they are folded into it"
+    );
+}
+
+/// The cut is not a loss: the tree hands out an `id`, and `get_widget` turns that `id` back
+/// into the whole text. This is the contract that lets `widget_tree` stay small.
+#[test]
+fn get_widget_returns_the_text_the_tree_cut_short() {
+    let app_tree = demo_app_tree();
+    let matched = query(
+        &app_tree,
         &QueryFilter {
             query: Query {
                 content_contains: Some("every word of it".to_owned()),
@@ -209,20 +228,94 @@ fn a_long_label_arrives_whole() {
             ..Default::default()
         },
         1.0,
+    )
+    .expect("no missing `root`");
+    let label = matched.first().expect("the long label matched");
+    let cut = label.value.as_deref().expect("a label's text is its value");
+    assert!(
+        cut.ends_with(tree::TRUNCATION_MARKER),
+        "the tree cut it short: {cut}"
     );
-    assert_eq!(
-        matched.first().and_then(|node| node.value.as_deref()),
-        Some(LONG_LABEL)
+
+    let node = tree::resolve_unique(&app_tree, &tree::Locator::Id { id: label.id }, 1.0)
+        .expect("the id the tree just handed out resolves");
+    let full = tree::widget_detail(&node, 1.0)
+        .value
+        .expect("the same text, in full");
+    assert_eq!(full, LONG_LABEL);
+    assert!(tree::MAX_TEXT_CHARS < full.chars().count(), "past the cut");
+}
+
+/// A tight `limit` keeps the top of the app — the panels and rows an agent navigates by — and
+/// says how many children each cut node lost.
+#[test]
+fn a_tight_limit_keeps_the_top_of_the_tree() {
+    insta::assert_snapshot!(query_app(&QueryFilter {
+        limit: 12,
+        ..Default::default()
+    }));
+}
+
+/// An exclusion takes a whole subtree with it: the chat panel's own text no longer answers a
+/// query meant for the app.
+#[test]
+fn an_excluded_panel_takes_its_text_with_it() {
+    let filter = |exclude| QueryFilter {
+        query: Query {
+            content_contains: Some("volume".to_owned()),
+            ..Default::default()
+        },
+        exclude,
+        ..Default::default()
+    };
+
+    let tree = demo_app_tree();
+    let unfiltered = query(&tree, &filter(None), 1.0).expect("no missing `root`");
+    assert!(
+        unfiltered
+            .iter()
+            .any(|node| node.value.as_deref() == Some("where is the volume slider?")),
+        "the chat's echo of the question is in the way"
     );
+
+    // The panel itself carries no text, so it is excluded by the id of the node holding it.
+    let chat_panel = find_container_of(
+        &query(&tree, &QueryFilter::default(), 1.0).expect("no missing `root`"),
+        "Chat",
+    )
+    .expect("the chat panel is in the tree");
+    let excluded = query(
+        &tree,
+        &filter(Some(Exclusion {
+            id: Some(chat_panel),
+            ..Default::default()
+        })),
+        1.0,
+    );
+    insta::assert_snapshot!(serde_json::to_string_pretty(&excluded).expect("serialize"));
+}
+
+/// The id of the nearest node above a `heading`, i.e. the container that holds that section.
+fn find_container_of(nodes: &[Widget], heading: &str) -> Option<tree::Id> {
+    nodes.iter().find_map(|node| {
+        let holds_heading = node
+            .children
+            .iter()
+            .any(|child| child.value.as_deref() == Some(heading));
+        if holds_heading {
+            Some(node.id)
+        } else {
+            find_container_of(&node.children, heading)
+        }
+    })
 }
 
 /// Nothing an agent can act on should reach it without an `id` to act on it with, and the
 /// pruning rules shouldn't leave a node that carries nothing at all.
 #[test]
 fn every_returned_node_is_actionable() {
-    fn check(nodes: &[TreeNode]) {
+    fn check(nodes: &[Widget]) {
         for node in nodes {
-            assert!(!node.id.is_empty(), "every node is addressable");
             assert!(
                 node.role.is_some()
                     || node.label.is_some()
@@ -234,7 +327,7 @@ fn every_returned_node_is_actionable() {
         }
     }
 
-    let nodes = query(&demo_app_tree(), &QueryFilter::default(), 1.0);
+    let nodes = query(&demo_app_tree(), &QueryFilter::default(), 1.0).expect("no missing `root`");
     assert!(!nodes.is_empty(), "the app has widgets");
     check(&nodes);
 }
