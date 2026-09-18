@@ -2,6 +2,11 @@
 # install:  cargo install typos-cli
 # run:      typos
 
+[default]
+# Widget ids in the test snapshots are hex, and hex spells words: `4ba` reads as `by`,
+# `3daa` as `data`.
+extend-ignore-re = ['"id": "[0-9a-f]+"']
+
 [default.extend-words]
 teh = "teh"     # part of @teh-cmc
 egui = "egui"

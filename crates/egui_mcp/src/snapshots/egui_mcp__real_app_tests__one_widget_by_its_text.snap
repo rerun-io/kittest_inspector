@@ -1,0 +1,41 @@
+---
+source: crates/egui_mcp/src/real_app_tests.rs
+expression: "query_app(&QueryFilter\n{\n    query: Query\n    { content_contains: Some(\"volume\".to_owned()), ..Default::default() },\n    ..Default::default()\n})"
+---
+[
+  {
+    "id": "50574715c1dcec2f",
+    "role": "Label",
+    "value": "where is the volume slider?",
+    "children": [
+      {
+        "id": "cada8298c6e445cc",
+        "role": "TextRun",
+        "value": "where is the volume slider?"
+      }
+    ]
+  },
+  {
+    "id": "96a8f155b766eefb",
+    "role": "Slider",
+    "label": "Volume"
+  },
+  {
+    "id": "db68ddc08d32ccd1",
+    "role": "SpinButton",
+    "label": "Volume",
+    "value": "42"
+  },
+  {
+    "id": "2389025b21f1c31",
+    "role": "Label",
+    "value": "Volume",
+    "children": [
+      {
+        "id": "d5cc4c192e7b0b04",
+        "role": "TextRun",
+        "value": "Volume"
+      }
+    ]
+  }
+]

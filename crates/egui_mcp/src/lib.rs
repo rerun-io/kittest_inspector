@@ -18,5 +18,8 @@ pub mod server;
 pub mod tools;
 pub mod tree;
 
+#[cfg(test)]
+mod real_app_tests;
+
 pub use bridge::{BoxFuture, Bridge, FramedTransport, PeerInfo, Transport, TreeSnapshot};
 pub use tools::{Server, UiServer};

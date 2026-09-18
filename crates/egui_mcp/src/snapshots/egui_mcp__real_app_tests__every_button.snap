@@ -1,0 +1,67 @@
+---
+source: crates/egui_mcp/src/real_app_tests.rs
+expression: "query_app(&QueryFilter\n{\n    query: Query { role: Some(\"Button\".to_owned()), ..Default::default() },\n    ..Default::default()\n})"
+---
+[
+  {
+    "id": "44da3610c66a7249",
+    "role": "Button",
+    "label": "Run"
+  },
+  {
+    "id": "47c33c87d70251d9",
+    "role": "Button",
+    "label": "egui"
+  },
+  {
+    "id": "ac02b6df4e5fe446",
+    "role": "Button",
+    "label": "kittest"
+  },
+  {
+    "id": "333c9182ae950a46",
+    "role": "Button",
+    "label": "rerun"
+  },
+  {
+    "id": "cdfe39bc5c18786c",
+    "role": "Button",
+    "label": "Advanced"
+  },
+  {
+    "id": "53f88f38e6976025",
+    "role": "Button",
+    "label": "Reset",
+    "disabled": true
+  },
+  {
+    "id": "ec63454b51548c53",
+    "role": "Button",
+    "label": "Click me!"
+  },
+  {
+    "id": "47d22251be010243",
+    "role": "Button",
+    "label": "First"
+  },
+  {
+    "id": "220d3af9e7df4bc2",
+    "role": "Button",
+    "label": "Second"
+  },
+  {
+    "id": "323785727c384a9c",
+    "role": "Button",
+    "label": "Third"
+  },
+  {
+    "id": "28b278d32f7a7867",
+    "role": "Button",
+    "label": "Click me!"
+  },
+  {
+    "id": "18813c8724eae525",
+    "role": "Button",
+    "label": "Click to see what is hidden!"
+  }
+]
