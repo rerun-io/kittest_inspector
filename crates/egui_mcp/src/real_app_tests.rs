@@ -213,6 +213,40 @@ fn a_long_label_is_cut_short_but_still_matchable() {
     );
 }
 
+/// The cut is not a loss: the tree hands out an `id`, and `get_widget` turns that `id` back
+/// into the whole text. This is the contract that lets `widget_tree` stay small.
+#[test]
+fn get_widget_returns_the_text_the_tree_cut_short() {
+    let app_tree = demo_app_tree();
+    let matched = query(
+        &app_tree,
+        &QueryFilter {
+            query: Query {
+                content_contains: Some("every word of it".to_owned()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        1.0,
+    )
+    .expect("no missing `root`");
+    let label = matched.first().expect("the long label matched");
+    let cut = label.value.as_deref().expect("a label's text is its value");
+    assert!(
+        cut.ends_with(tree::TRUNCATION_MARKER),
+        "the tree cut it short: {cut}"
+    );
+
+    let id = tree::parse_id(&label.id).expect("the tree's own id parses");
+    let node = tree::resolve_unique(&app_tree, &tree::Locator::Id { id }, 1.0)
+        .expect("the id the tree just handed out resolves");
+    let full = tree::widget_detail(&node, 1.0)
+        .value
+        .expect("the same text, in full");
+    assert_eq!(full, LONG_LABEL);
+    assert!(tree::MAX_TEXT_CHARS < full.chars().count(), "past the cut");
+}
+
 /// A tight `limit` keeps the top of the app — the panels and rows an agent navigates by — and
 /// says how many children each cut node lost.
 #[test]
