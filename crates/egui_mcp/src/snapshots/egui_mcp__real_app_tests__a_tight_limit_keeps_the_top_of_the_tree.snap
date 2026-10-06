@@ -13,57 +13,58 @@ expression: "query_app(&QueryFilter { limit: 12, ..Default::default() })"
         "role": "GenericContainer",
         "children": [
           {
-            "id": "d0ab2963125f8970",
-            "role": "GenericContainer",
+            "id": "e5b151f8b168e554",
+            "role": "Pane",
             "children": [
               {
-                "id": "5fdb4d6fcd23c05e",
-                "role": "Label",
-                "value": "Search"
-              },
-              {
-                "id": "6f3fbf6586d5df4d",
-                "role": "TextInput",
-                "value": "tree"
-              },
-              {
-                "id": "44da3610c66a7249",
-                "role": "Button",
-                "label": "Run"
+                "id": "e80cac3b9c9e8f17",
+                "role": "GenericContainer",
+                "omitted_children": 3
               }
             ]
           },
           {
-            "id": "f8760b9a7c488d54",
-            "role": "GenericContainer",
+            "id": "6b77a1e3523353fb",
+            "role": "Pane",
             "children": [
               {
-                "id": "4ba251cd36818ac6",
-                "role": "Label",
-                "value": "Projects"
-              },
-              {
-                "id": "47c33c87d70251d9",
-                "role": "Button",
-                "label": "egui"
-              },
-              {
-                "id": "ac02b6df4e5fe446",
-                "role": "Button",
-                "label": "kittest"
+                "id": "efbee9bfd038e25c",
+                "role": "GenericContainer",
+                "omitted_children": 4
               }
-            ],
-            "omitted_children": 1
+            ]
           },
           {
-            "id": "85236434a2861251",
-            "role": "GenericContainer",
-            "omitted_children": 3
+            "id": "4f073a2eb1e95383",
+            "role": "Splitter",
+            "label": "Resize panel"
           },
           {
-            "id": "d2e22a518e06cd68",
-            "role": "GenericContainer",
-            "omitted_children": 8
+            "id": "bfe2b56da286622",
+            "role": "Pane",
+            "children": [
+              {
+                "id": "356cd4acb8ac5cc",
+                "role": "GenericContainer",
+                "omitted_children": 3
+              }
+            ]
+          },
+          {
+            "id": "902324f74873b87a",
+            "role": "Splitter",
+            "label": "Resize panel"
+          },
+          {
+            "id": "920179beebb0a10c",
+            "role": "Pane",
+            "children": [
+              {
+                "id": "d2e22a518e06cd68",
+                "role": "GenericContainer",
+                "omitted_children": 8
+              }
+            ]
           }
         ]
       }

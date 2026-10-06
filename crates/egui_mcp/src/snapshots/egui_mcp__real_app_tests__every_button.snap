@@ -4,29 +4,24 @@ expression: "query_app(&QueryFilter\n{\n    query: Query { role: Some(\"Button\"
 ---
 [
   {
-    "id": "44da3610c66a7249",
+    "id": "ab3815b91363f19e",
     "role": "Button",
     "label": "Run"
   },
   {
-    "id": "47c33c87d70251d9",
+    "id": "1a21f1014d0b5285",
     "role": "Button",
     "label": "egui"
   },
   {
-    "id": "ac02b6df4e5fe446",
+    "id": "149d23c7d8865e78",
     "role": "Button",
     "label": "kittest"
   },
   {
-    "id": "333c9182ae950a46",
+    "id": "1a35e75bad93680",
     "role": "Button",
     "label": "rerun"
-  },
-  {
-    "id": "cdfe39bc5c18786c",
-    "role": "Button",
-    "label": "Advanced"
   },
   {
     "id": "53f88f38e6976025",
@@ -55,13 +50,8 @@ expression: "query_app(&QueryFilter\n{\n    query: Query { role: Some(\"Button\"
     "label": "Third"
   },
   {
-    "id": "28b278d32f7a7867",
+    "id": "f85f09bb99688798",
     "role": "Button",
     "label": "Click me!"
-  },
-  {
-    "id": "18813c8724eae525",
-    "role": "Button",
-    "label": "Click to see what is hidden!"
   }
 ]
