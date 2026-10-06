@@ -53,8 +53,9 @@ impl DemoApp {
 
         egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Search");
-                ui.text_edit_singleline(&mut self.search);
+                let label = ui.label("Search");
+                ui.text_edit_singleline(&mut self.search)
+                    .labelled_by(label.id);
                 ui.button("Run").clicked();
             });
         });

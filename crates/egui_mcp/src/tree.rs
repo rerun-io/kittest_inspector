@@ -4,7 +4,7 @@
 //! can't be constructed from outside the crate. We project everything externally as the
 //! original `accesskit::NodeId` (a `pub u64`), and look up by walking the tree.
 
-use accesskit_consumer::{Node, Tree};
+use accesskit_consumer::{NodeRef, Tree};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -255,7 +255,7 @@ impl Query {
     }
 
     /// Does `node` satisfy every set constraint? (Visibility is the caller's concern.)
-    fn matches(&self, node: &Node<'_>) -> bool {
+    fn matches(&self, node: &NodeRef<'_>) -> bool {
         if let Some(needle) = &self.content_contains
             && !contains_ci(&node.label().unwrap_or_default(), needle)
             && !contains_ci(&node.value().unwrap_or_default(), needle)
@@ -319,7 +319,7 @@ pub struct Exclusion {
 
 impl Exclusion {
     /// Does `node` root a subtree the caller asked to leave out?
-    fn matches(&self, node: &Node<'_>) -> bool {
+    fn matches(&self, node: &NodeRef<'_>) -> bool {
         if let Some(id) = self.id
             && accesskit_id(node) == id
         {
@@ -408,7 +408,7 @@ pub fn query(
 ///
 /// A non-matching node returns its descendants' matches, which its own parent then adopts. An
 /// excluded node returns nothing at all — the exclusion takes its subtree with it.
-fn walk(node: &Node<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Widget> {
+fn walk(node: &NodeRef<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<Widget> {
     if filter
         .exclude
         .as_ref()
@@ -456,7 +456,7 @@ fn shorten(text: String) -> String {
 /// not a widget an agent can act on: actions target the parent, which still holds the whole
 /// string. A run whose text the parent *doesn't* carry is left alone, since dropping it would
 /// lose the only copy.
-fn drop_echoed_text_runs(parent: &Node<'_>, children: Vec<Widget>) -> Vec<Widget> {
+fn drop_echoed_text_runs(parent: &NodeRef<'_>, children: Vec<Widget>) -> Vec<Widget> {
     let owned_text = format!(
         "{} {}",
         parent.label().unwrap_or_default(),
@@ -585,14 +585,14 @@ fn roles_in_tree(tree: &Tree) -> Vec<String> {
     roles.into_iter().collect()
 }
 
-fn collect_roles(node: &Node<'_>, out: &mut std::collections::BTreeSet<String>) {
+fn collect_roles(node: &NodeRef<'_>, out: &mut std::collections::BTreeSet<String>) {
     out.insert(format!("{:?}", node.role()));
     for child in node.children() {
         collect_roles(&child, out);
     }
 }
 
-fn matches(node: &Node<'_>, filter: &QueryFilter) -> bool {
+fn matches(node: &NodeRef<'_>, filter: &QueryFilter) -> bool {
     if filter.visible_only && node.is_hidden() {
         return false;
     }
@@ -605,7 +605,7 @@ fn contains_ci(hay: &str, needle: &str) -> bool {
         .contains(&needle.to_ascii_lowercase())
 }
 
-pub fn widget_detail(node: &Node<'_>, pixels_per_point: f32) -> WidgetDetail {
+pub fn widget_detail(node: &NodeRef<'_>, pixels_per_point: f32) -> WidgetDetail {
     WidgetDetail {
         id: accesskit_id(node),
         role: format!("{:?}", node.role()),
@@ -621,7 +621,7 @@ pub fn widget_detail(node: &Node<'_>, pixels_per_point: f32) -> WidgetDetail {
     }
 }
 
-fn to_widget(node: &Node<'_>, children: Vec<Widget>, pixels_per_point: f32) -> Widget {
+fn to_widget(node: &NodeRef<'_>, children: Vec<Widget>, pixels_per_point: f32) -> Widget {
     let WidgetDetail {
         id,
         role,
@@ -647,7 +647,7 @@ fn to_widget(node: &Node<'_>, children: Vec<Widget>, pixels_per_point: f32) -> W
 }
 
 /// Project a consumer node to its original `accesskit::NodeId`.
-pub fn accesskit_id(node: &Node<'_>) -> Id {
+pub fn accesskit_id(node: &NodeRef<'_>) -> Id {
     let (local, _tree) = node.locate();
     Id(local.0)
 }
@@ -688,7 +688,7 @@ pub fn resolve_unique<'a>(
     tree: &'a Tree,
     locator: &Locator,
     pixels_per_point: f32,
-) -> Result<Node<'a>, String> {
+) -> Result<NodeRef<'a>, String> {
     let root = tree.state().root();
     match locator {
         Locator::Id { id } => {
@@ -712,10 +712,10 @@ pub fn resolve_unique<'a>(
 
 /// Reduce a match list to the single node an action needs, or an error describing the miss.
 fn one<'a>(
-    mut found: Vec<Node<'a>>,
+    mut found: Vec<NodeRef<'a>>,
     pixels_per_point: f32,
     what: &str,
-) -> Result<Node<'a>, String> {
+) -> Result<NodeRef<'a>, String> {
     match found.len() {
         0 => Err(format!("no node found matching {what}")),
         1 => Ok(found.remove(0)),
@@ -734,7 +734,11 @@ fn one<'a>(
 }
 
 /// Depth-first collection of every node satisfying `pred`.
-fn find_all<'a>(node: &Node<'a>, pred: &impl Fn(&Node<'_>) -> bool, out: &mut Vec<Node<'a>>) {
+fn find_all<'a>(
+    node: &NodeRef<'a>,
+    pred: &impl Fn(&NodeRef<'_>) -> bool,
+    out: &mut Vec<NodeRef<'a>>,
+) {
     if pred(node) {
         out.push(*node);
     }
@@ -745,7 +749,7 @@ fn find_all<'a>(node: &Node<'a>, pred: &impl Fn(&Node<'_>) -> bool, out: &mut Ve
 
 #[cfg(test)]
 mod tests {
-    use accesskit::{Node as AkNode, NodeId, Role, Tree as AkTree, TreeId, TreeUpdate};
+    use accesskit::{Node as AkNode, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
 
     use super::*;
 
@@ -798,7 +802,7 @@ mod tests {
                     (NodeId(0x5), valued),
                     (NodeId(0x4), noise),
                 ],
-                tree: Some(AkTree::new(NodeId(0x1))),
+                tree: Some(TreeInfo::new(NodeId(0x1))),
                 tree_id: TreeId::ROOT,
                 focus: NodeId(0x1),
             },
@@ -966,7 +970,7 @@ mod tests {
         Tree::new(
             TreeUpdate {
                 nodes,
-                tree: Some(AkTree::new(NodeId(0x1))),
+                tree: Some(TreeInfo::new(NodeId(0x1))),
                 tree_id: TreeId::ROOT,
                 focus: NodeId(0x1),
             },

@@ -874,6 +874,7 @@ impl UiServer {
                 delta: egui::Vec2::new(-args.delta.x, -args.delta.y),
                 phase: egui::TouchPhase::Move,
                 modifiers,
+                source: egui::MouseWheelSource::Unknown,
             },
         ];
         with_modifiers(bridge, modifiers, async || {
