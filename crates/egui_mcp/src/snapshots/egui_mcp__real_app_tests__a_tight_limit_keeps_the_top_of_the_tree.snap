@@ -9,64 +9,63 @@ expression: "query_app(&QueryFilter { limit: 12, ..Default::default() })"
     "focused": true,
     "children": [
       {
-        "id": "fec0f6fb9dd14fa2",
-        "role": "GenericContainer",
+        "id": "e5b151f8b168e554",
+        "role": "Pane",
         "children": [
           {
-            "id": "e5b151f8b168e554",
-            "role": "Pane",
-            "children": [
-              {
-                "id": "e80cac3b9c9e8f17",
-                "role": "GenericContainer",
-                "omitted_children": 3
-              }
-            ]
+            "id": "825e03fce82e2144",
+            "role": "Label",
+            "value": "Search"
           },
           {
-            "id": "6b77a1e3523353fb",
-            "role": "Pane",
-            "children": [
-              {
-                "id": "efbee9bfd038e25c",
-                "role": "GenericContainer",
-                "omitted_children": 4
-              }
-            ]
+            "id": "1ff08a75137e2b9e",
+            "role": "TextInput",
+            "label": "Search",
+            "value": "tree"
           },
           {
-            "id": "4f073a2eb1e95383",
-            "role": "Splitter",
-            "label": "Resize panel"
-          },
-          {
-            "id": "bfe2b56da286622",
-            "role": "Pane",
-            "children": [
-              {
-                "id": "356cd4acb8ac5cc",
-                "role": "GenericContainer",
-                "omitted_children": 3
-              }
-            ]
-          },
-          {
-            "id": "902324f74873b87a",
-            "role": "Splitter",
-            "label": "Resize panel"
-          },
-          {
-            "id": "920179beebb0a10c",
-            "role": "Pane",
-            "children": [
-              {
-                "id": "d2e22a518e06cd68",
-                "role": "GenericContainer",
-                "omitted_children": 8
-              }
-            ]
+            "id": "ab3815b91363f19e",
+            "role": "Button",
+            "label": "Run"
           }
         ]
+      },
+      {
+        "id": "6b77a1e3523353fb",
+        "role": "Pane",
+        "children": [
+          {
+            "id": "8e811bd7cee8f976",
+            "role": "Label",
+            "value": "Projects"
+          },
+          {
+            "id": "1a21f1014d0b5285",
+            "role": "Button",
+            "label": "egui"
+          }
+        ],
+        "omitted_children": 2
+      },
+      {
+        "id": "4f073a2eb1e95383",
+        "role": "Splitter",
+        "label": "Resize panel"
+      },
+      {
+        "id": "bfe2b56da286622",
+        "role": "Pane",
+        "omitted_children": 3
+      },
+      {
+        "id": "902324f74873b87a",
+        "role": "Splitter",
+        "label": "Resize panel"
+      },
+      {
+        "id": "920179beebb0a10c",
+        "role": "Pane",
+        "omitted_children": 8
       }
     ]
   }

@@ -152,10 +152,19 @@ impl Widget {
     /// egui nests layout containers several deep — a panel inside a frame inside a `Ui` — and a
     /// chain of them with one child each is a chain of nothing: no text, no state, nothing to
     /// click. The child says everything the chain does.
+    fn is_pass_through(&self, filter: &QueryFilter) -> bool {
+        self.is_silent_container(filter) && self.children.len() == 1
+    }
+
+    /// Is this a layout container with nothing of its own to say — no text, no state?
+    ///
+    /// Such a container only adds a level of nesting. It collapses when it holds one child
+    /// ([`Self::is_pass_through`]), or when it is the one child of its parent, which then
+    /// adopts its children.
     ///
     /// Not collapsed when the caller asked for this role by name, since they would then get
     /// nothing back at all.
-    fn is_pass_through(&self, filter: &QueryFilter) -> bool {
+    fn is_silent_container(&self, filter: &QueryFilter) -> bool {
         let is_container = match self.role.as_deref() {
             None => true,
             Some(role) => role == GENERIC_CONTAINER_ROLE,
@@ -166,7 +175,6 @@ impl Widget {
             });
         is_container
             && !asked_for
-            && self.children.len() == 1
             && self.label.is_none()
             && self.value.is_none()
             && !self.focused
@@ -423,6 +431,14 @@ fn walk(node: &NodeRef<'_>, filter: &QueryFilter, pixels_per_point: f32) -> Vec<
     if matches(node, filter) {
         let children = drop_echoed_text_runs(node, children);
         let mut view = to_widget(node, children, pixels_per_point);
+        // An only child that is a silent container stands between this node and its own
+        // children, so this node adopts them. That child already collapsed if it held just one,
+        // so what it hands over is never another only child to collapse.
+        if let [only_child] = view.children.as_mut_slice()
+            && only_child.is_silent_container(filter)
+        {
+            view.children = std::mem::take(&mut only_child.children);
+        }
         // Pruning runs bottom-up, so a node left childless by it is reconsidered here in turn,
         // and a chain of containers collapses a link at a time.
         if view.is_noise() {
@@ -872,6 +888,68 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(ids(&asked), ["7"]);
+    }
+
+    /// ```text
+    /// root(Window)
+    /// └── panel(GenericContainer)  — the only child, and says nothing, so `root` adopts its children
+    ///     ├── ok(Button "OK")
+    ///     └── cancel(Button "Cancel")
+    /// ```
+    fn only_child_tree() -> Tree {
+        let mut root = AkNode::new(Role::Window);
+        root.set_children(vec![NodeId(0x2)]);
+        let mut panel = AkNode::new(Role::GenericContainer);
+        panel.set_children(vec![NodeId(0x3), NodeId(0x4)]);
+        let mut ok = AkNode::new(Role::Button);
+        ok.set_label("OK");
+        let mut cancel = AkNode::new(Role::Button);
+        cancel.set_label("Cancel");
+
+        Tree::new(
+            TreeUpdate {
+                nodes: vec![
+                    (NodeId(0x1), root),
+                    (NodeId(0x2), panel),
+                    (NodeId(0x3), ok),
+                    (NodeId(0x4), cancel),
+                ],
+                tree: Some(TreeInfo::new(NodeId(0x1))),
+                tree_id: TreeId::ROOT,
+                focus: NodeId(0x1),
+            },
+            false,
+        )
+    }
+
+    #[test]
+    fn a_container_that_is_an_only_child_and_says_nothing_collapses() {
+        let ids = |nodes: &[Widget]| -> Vec<String> {
+            nodes.iter().map(|node| node.id.to_string()).collect()
+        };
+
+        let nodes = query(&only_child_tree(), &QueryFilter::default(), 1.0).expect("no `root`");
+        assert_eq!(ids(&nodes), ["1"]);
+        assert_eq!(
+            ids(&nodes[0].children),
+            ["3", "4"],
+            "the buttons, standing where their panel did"
+        );
+
+        // Unless that role is what the caller asked for.
+        let asked = query(
+            &only_child_tree(),
+            &QueryFilter {
+                query: Query {
+                    role: Some("genericcontainer".to_owned()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            1.0,
+        )
+        .expect("no `root`");
+        assert_eq!(ids(&asked), ["2"]);
     }
 
     #[test]
