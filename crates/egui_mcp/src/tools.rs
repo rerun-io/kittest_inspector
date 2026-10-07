@@ -39,8 +39,9 @@ use rmcp::{
         wrapper::{Json, Parameters},
     },
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
-        JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
+        CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
+        Implementation, JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities,
+        ServerInfo, Tool,
     },
     schemars,
     service::{RequestContext, RoleServer},
@@ -1232,6 +1233,21 @@ Acting and verifying:
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a widget's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport."#;
 
+/// How long a client may keep the tool list without asking again.
+const TOOL_LIST_TTL: Duration = Duration::from_secs(5 * 60);
+
+/// The `tools/list` result, with the cache hints MCP 2026-07-28 (SEP-2549) requires.
+///
+/// Both `ttlMs` and `cacheScope` are mandatory from that protocol version on: a client that
+/// negotiated it rejects the whole list when either is missing, leaving the server with no tools.
+/// The list is fixed for the life of the process and holds nothing user-specific, so it may be
+/// cached and shared freely.
+fn tool_list(tools: Vec<Tool>) -> ListToolsResult {
+    ListToolsResult::with_all_items(tools)
+        .with_ttl_ms(TOOL_LIST_TTL.as_millis() as u64)
+        .with_cache_scope(CacheScope::Public)
+}
+
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
@@ -1244,10 +1260,7 @@ impl ServerHandler for Server {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(ListToolsResult {
-            tools: self.tools(),
-            ..Default::default()
-        })
+        Ok(tool_list(self.tools()))
     }
 
     async fn call_tool(
@@ -1352,6 +1365,17 @@ mod tests {
     /// change. Run `INSTA_UPDATE=always cargo nextest run -p egui_mcp` to accept intended edits.
     ///
     /// The server version is intentionally excluded so the snapshot is stable across releases.
+    #[test]
+    fn tool_list_carries_both_cache_hints() {
+        let result = serde_json::to_value(tool_list(Server::new().tools())).unwrap();
+        assert!(
+            result["ttlMs"].is_u64(),
+            "ttlMs missing: {}",
+            result["ttlMs"]
+        );
+        assert_eq!(result["cacheScope"], "public");
+    }
+
     #[test]
     fn agent_surface_snapshot() {
         let server = Server::new();
