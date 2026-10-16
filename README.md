@@ -1,3 +1,7 @@
+### NOTE: `egui_mcp` and `kittest_inspector` were moved into a monorepo at [rerun-io/egui_crates](https://github.com/rerun-io/egui_crates/tree/main/crates/egui_table). Please open new PRs and issues over there.
+
+
+
 # Kittest inspection utilities
 
 This repo contains two tools using the [egui_inspection](https://github.com/emilk/egui/blob/main/crates/egui_inspection/README.md) 
